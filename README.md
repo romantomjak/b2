@@ -1,6 +1,6 @@
 # b2
 
-Backblaze B2 Cloud Storage command line client
+Backblaze B2 Cloud Storage Command Line Client
 
 ---
 
