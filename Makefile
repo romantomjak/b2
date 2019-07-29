@@ -1,7 +1,16 @@
-build:
-	go build -o b2 cmd/b2/main.go
-
-test:
-	go test -cover ./
+SHELL = bash
+PROJECT_ROOT := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+GIT_COMMIT := $(shell git rev-parse HEAD)
+GO_PKGS := $(shell go list ./...)
 
 .PHONY: build
+build:
+	go build -o b2
+
+.PHONY: test
+test:
+	go test -cover $(GO_PKGS)
+
+.PHONY: clean
+clean:
+	@rm -f "$(PROJECT_ROOT)/b2"
