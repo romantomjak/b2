@@ -4,6 +4,10 @@ Backblaze B2 Cloud Storage Command Line Client
 
 ---
 
+## Status
+
+This project is in development phase. I highly recommend you to use b2 with go modules.
+
 ## Install
 
 ```sh
