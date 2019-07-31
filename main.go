@@ -25,6 +25,11 @@ func Run(stdin io.Reader, stdout, stderr io.Writer, args []string) int {
 	c := cli.NewCLI("b2", version.Version)
 	c.Args = args
 	c.Commands = map[string]cli.CommandFactory{
+		"create": func() (cli.Command, error) {
+			return &command.CreateBucketCommand{
+				Ui: ui,
+			}, nil
+		},
 		"version": func() (cli.Command, error) {
 			return &command.VersionCommand{
 				Ui:      ui,
