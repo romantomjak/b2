@@ -35,9 +35,12 @@ func (c *CreateBucketCommand) Synopsis() string {
 func (c *CreateBucketCommand) Name() string { return "b2 create" }
 
 func (c *CreateBucketCommand) Run(args []string) int {
+	var bucketType string
 
 	flags := flag.NewFlagSet(c.Name(), flag.ContinueOnError)
 	flags.Usage = func() { c.Ui.Output(c.Help()) }
+	flags.StringVar(&bucketType, "type", "private", "Change bucket type")
+
 	if err := flags.Parse(args); err != nil {
 		return 1
 	}
@@ -48,4 +51,12 @@ func (c *CreateBucketCommand) Run(args []string) int {
 		c.Ui.Error("This command takes one argument: <bucket-name>")
 		return 1
 	}
+
+	// Validate bucket type
+	if bucketType != "public" && bucketType != "private" {
+		c.Ui.Error(`-type must be either "public" or "private"`)
+		return 1
+	}
+
+	return 0
 }

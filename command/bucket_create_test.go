@@ -1,6 +1,7 @@
 package command
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -30,5 +31,30 @@ func TestCreateBucketCommand_RequiresBucketName(t *testing.T) {
 	assertEqual(t, code, 1)
 
 	out := ui.ErrorWriter.String()
-	assertContains(t, out, "This command takes one argument")
+	assertContains(t, out, "This command takes one argument: <bucket-name>")
+}
+
+func TestCreateBucketCommand_RequiresValidBucketType(t *testing.T) {
+	testCases := []struct {
+		bucketType string
+		exitCode   int
+		stdErr     string
+	}{
+		{"foo", 1, `-type must be either "public" or "private"`},
+		{"public", 0, ""},
+		{"private", 0, ""},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("type=%s", tc.bucketType), func(t *testing.T) {
+			ui := cli.NewMockUi()
+			cmd := &CreateBucketCommand{Ui: ui}
+
+			code := cmd.Run([]string{"-type=" + tc.bucketType, "my-bucket"})
+			assertEqual(t, code, tc.exitCode)
+
+			out := ui.ErrorWriter.String()
+			assertContains(t, out, tc.stdErr)
+		})
+	}
 }
