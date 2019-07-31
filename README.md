@@ -1,4 +1,4 @@
-# b2 [![Build Status](https://travis-ci.org/romantomjak/b2.svg)](https://travis-ci.org/romantomjak/b2)
+# b2 [![Build Status](https://travis-ci.org/romantomjak/b2.svg)](https://travis-ci.org/romantomjak/b2) [![GoDoc](https://godoc.org/github.com/romantomjak/b2?status.svg)](https://godoc.org/github.com/romantomjak/b2)
 
 Backblaze B2 Cloud Storage Command Line Client
 
