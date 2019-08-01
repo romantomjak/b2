@@ -2,6 +2,7 @@ package command
 
 import (
 	"flag"
+	"fmt"
 	"strings"
 
 	"github.com/mitchellh/cli"
@@ -57,6 +58,11 @@ func (c *CreateBucketCommand) Run(args []string) int {
 		c.Ui.Error(`-type must be either "public" or "private"`)
 		return 1
 	}
+
+	// Get the bucket name
+	bucketName := args[0]
+
+	c.Ui.Output(fmt.Sprintf("Successfully created %q Bucket!", bucketName))
 
 	return 0
 }

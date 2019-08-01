@@ -58,3 +58,14 @@ func TestCreateBucketCommand_RequiresValidBucketType(t *testing.T) {
 		})
 	}
 }
+
+func TestCreateBucketCommand_CanCreateBucket(t *testing.T) {
+	ui := cli.NewMockUi()
+	cmd := &CreateBucketCommand{Ui: ui}
+
+	code := cmd.Run([]string{"my-bucket"})
+	assertEqual(t, code, 0)
+
+	out := ui.OutputWriter.String()
+	assertContains(t, out, fmt.Sprintf("Successfully created %q Bucket!", "my-bucket"))
+}
