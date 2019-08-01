@@ -11,7 +11,7 @@ type Config struct {
 	ApplicationKeyID string
 
 	// The secret part of the key
-	ApplicationKey string
+	ApplicationKeySecret string
 
 	// The base URL for authorization API call
 	AuthorizationBaseURL *url.URL
@@ -33,7 +33,7 @@ func FromEnv(env []string) *Config {
 	}
 
 	if keySecret, ok := envMap["B2_KEY_SECRET"]; ok {
-		config.ApplicationKey = keySecret
+		config.ApplicationKeySecret = keySecret
 	}
 
 	return config
