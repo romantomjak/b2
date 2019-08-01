@@ -1,6 +1,7 @@
 package config
 
 import (
+	"net/url"
 	"strings"
 )
 
@@ -11,11 +12,18 @@ type Config struct {
 
 	// The secret part of the key
 	ApplicationKey string
+
+	// The base URL for authorization API call
+	AuthorizationBaseURL *url.URL
 }
 
 // FromEnv returns default configuration based on environment variables
 func FromEnv(env []string) *Config {
-	config := &Config{}
+	authURL, _ := url.Parse("https://api.backblazeb2.com/")
+
+	config := &Config{
+		AuthorizationBaseURL: authURL,
+	}
 
 	// convert to a map so it's easier to work with
 	envMap := toMap(env)
