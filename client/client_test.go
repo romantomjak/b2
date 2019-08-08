@@ -16,15 +16,14 @@ func assertStrings(t *testing.T, got, want string) {
 
 func TestClient_NewClient(t *testing.T) {
 	cfg := config.FromEnv([]string{"B2_KEY_ID=mykey", "B2_KEY_SECRET=muchsecret"})
-	c := NewClient(cfg)
-
+	c := NewClient(nil)
 	assertStrings(t, c.UserAgent[:2], "b2")
 	assertStrings(t, c.BaseURL.String(), cfg.AuthorizationBaseURL.String())
 }
 
 func TestClient_NewRequest(t *testing.T) {
 	cfg := config.FromEnv([]string{"B2_KEY_ID=mykey", "B2_KEY_SECRET=muchsecret"})
-	c := NewClient(cfg)
+	c := NewClient(nil)
 
 	req, _ := c.NewRequest(http.MethodGet, "foo", nil)
 

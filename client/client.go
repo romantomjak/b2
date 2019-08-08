@@ -4,15 +4,11 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/romantomjak/b2/config"
 	"github.com/romantomjak/b2/version"
 )
 
 // Client manages communication with Backblaze API
 type Client struct {
-	// Configuration of the client
-	config *config.Config
-
 	// HTTP client used to communicate with the B2 API
 	client *http.Client
 
@@ -27,9 +23,11 @@ type Client struct {
 //
 // BaseURL is initialised to the authorization URL and will be replaced
 // with a new one returned by the account authorization API call.
-func NewClient(cfg *config.Config) *Client {
+func NewClient(httpClient *http.Client) *Client {
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
 	return &Client{
-		config:    cfg,
 		client:    http.DefaultClient,
 		UserAgent: "b2/" + version.Version + " (+https://github.com/romantomjak/b2)",
 		BaseURL:   cfg.AuthorizationBaseURL,
