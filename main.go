@@ -8,6 +8,7 @@ import (
 	"github.com/mitchellh/cli"
 
 	"github.com/romantomjak/b2/command"
+	"github.com/romantomjak/b2/command/bucket"
 	"github.com/romantomjak/b2/version"
 )
 
@@ -26,7 +27,7 @@ func Run(stdin io.Reader, stdout, stderr io.Writer, args []string) int {
 	c.Args = args
 	c.Commands = map[string]cli.CommandFactory{
 		"create": func() (cli.Command, error) {
-			return &command.CreateBucketCommand{
+			return &bucket.CreateBucketCommand{
 				Ui: ui,
 			}, nil
 		},
