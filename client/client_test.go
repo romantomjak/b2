@@ -29,11 +29,6 @@ func TestClient_NewRequest(t *testing.T) {
 	// test relative URL was expanded
 	assertStrings(t, req.URL.String(), cfg.AuthorizationBaseURL.String()+"foo")
 
-	// // test body was JSON encoded
-	// body, _ := ioutil.ReadAll(req.Body)
-	// if string(body) != outBody {
-	// 	t.Errorf("NewRequest(%v)Body = %v, expected %v", inBody, string(body), outBody)
-	// }
 
 	// test default user-agent is attached to the request
 	userAgent := req.Header.Get("User-Agent")

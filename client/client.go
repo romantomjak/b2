@@ -36,10 +36,7 @@ func NewClient() *Client {
 //
 // The path should always be specified without a preceding slash. It will be
 // resolved to the BaseURL of the Client.
-//
-// If specified, the value pointed to by body is JSON encoded and included
-// in as the request body.
-func (c *Client) NewRequest(method, path string, body interface{}) (*http.Request, error) {
+func (c *Client) NewRequest(method, path string) (*http.Request, error) {
 	rel, err := url.Parse(path)
 	if err != nil {
 		return nil, err
