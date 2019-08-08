@@ -20,11 +20,7 @@ type Client struct {
 }
 
 // NewClient returns a new Backblaze API client
-func NewClient(httpClient *http.Client) *Client {
-	if httpClient == nil {
-		httpClient = http.DefaultClient
-	}
-
+func NewClient() *Client {
 	// This will be replaced with a new URL returned by the
 	// account authorization API call.
 	baseURL, _ := url.Parse("https://api.backblazeb2.com/")
