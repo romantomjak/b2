@@ -1,4 +1,4 @@
-package command
+package bucket
 
 import (
 	"flag"
@@ -33,7 +33,7 @@ func (c *CreateBucketCommand) Synopsis() string {
 	return "Create a new bucket"
 }
 
-func (c *CreateBucketCommand) Name() string { return "b2 create" }
+func (c *CreateBucketCommand) Name() string { return "create" }
 
 func (c *CreateBucketCommand) Run(args []string) int {
 	var bucketType string
