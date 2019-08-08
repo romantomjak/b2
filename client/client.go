@@ -20,17 +20,19 @@ type Client struct {
 }
 
 // NewClient returns a new Backblaze API client
-//
-// BaseURL is initialised to the authorization URL and will be replaced
-// with a new one returned by the account authorization API call.
 func NewClient(httpClient *http.Client) *Client {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
+
+	// This will be replaced with a new URL returned by the
+	// account authorization API call.
+	baseURL, _ := url.Parse("https://api.backblazeb2.com/")
+
 	return &Client{
 		client:    http.DefaultClient,
 		UserAgent: "b2/" + version.Version + " (+https://github.com/romantomjak/b2)",
-		BaseURL:   cfg.AuthorizationBaseURL,
+		BaseURL:   baseURL,
 	}
 }
 

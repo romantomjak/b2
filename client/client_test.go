@@ -15,10 +15,9 @@ func assertStrings(t *testing.T, got, want string) {
 }
 
 func TestClient_NewClient(t *testing.T) {
-	cfg := config.FromEnv([]string{"B2_KEY_ID=mykey", "B2_KEY_SECRET=muchsecret"})
 	c := NewClient(nil)
 	assertStrings(t, c.UserAgent[:2], "b2")
-	assertStrings(t, c.BaseURL.String(), cfg.AuthorizationBaseURL.String())
+	assertStrings(t, c.BaseURL.String(), "https://api.backblazeb2.com/")
 }
 
 func TestClient_NewRequest(t *testing.T) {
