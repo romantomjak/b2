@@ -59,7 +59,7 @@ func TestCreateBucketCommand_RequiresValidBucketType(t *testing.T) {
 	}
 }
 
-func TestCreateBucketCommand_CanCreateBucket(t *testing.T) {
+func TestCreateBucketCommand_PrintsSuccessMessage(t *testing.T) {
 	ui := cli.NewMockUi()
 	cmd := &CreateBucketCommand{Ui: ui}
 
