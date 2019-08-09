@@ -1,4 +1,4 @@
-package version
+package command
 
 import (
 	"github.com/mitchellh/cli"

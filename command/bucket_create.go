@@ -1,4 +1,4 @@
-package bucket
+package command
 
 import (
 	"flag"
@@ -6,12 +6,12 @@ import (
 	"strings"
 
 	"github.com/mitchellh/cli"
-	"github.com/romantomjak/b2/client"
+	b2 "github.com/romantomjak/b2/client"
 )
 
 type CreateBucketCommand struct {
 	Ui     cli.Ui
-	Client *client.Client
+	Client *b2.Client
 }
 
 func (c *CreateBucketCommand) Help() string {

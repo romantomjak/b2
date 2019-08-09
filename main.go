@@ -5,13 +5,10 @@ import (
 	"io"
 	"os"
 
-	"github.com/romantomjak/b2/client"
-	"github.com/romantomjak/b2/version"
-
 	"github.com/mitchellh/cli"
-
-	"github.com/romantomjak/b2/command/bucket"
-	versionCmd "github.com/romantomjak/b2/command/version"
+	"github.com/romantomjak/b2/client"
+	"github.com/romantomjak/b2/command"
+	"github.com/romantomjak/b2/version"
 )
 
 func main() {
@@ -34,13 +31,13 @@ func Run(stdin io.Reader, stdout, stderr io.Writer, args []string) int {
 	c.Args = args
 	c.Commands = map[string]cli.CommandFactory{
 		"create": func() (cli.Command, error) {
-			return &bucket.CreateBucketCommand{
+			return &command.CreateBucketCommand{
 				Ui:     ui,
 				Client: b2client,
 			}, nil
 		},
 		"version": func() (cli.Command, error) {
-			return &versionCmd.VersionCommand{
+			return &command.VersionCommand{
 				Ui:      ui,
 				Version: version.FullVersion(),
 			}, nil
