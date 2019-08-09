@@ -5,6 +5,8 @@ import (
 	"io"
 	"os"
 
+	"github.com/romantomjak/b2/client"
+
 	"github.com/mitchellh/cli"
 
 	"github.com/romantomjak/b2/command"
@@ -23,12 +25,18 @@ func Run(stdin io.Reader, stdout, stderr io.Writer, args []string) int {
 		ErrorWriter: stderr,
 	}
 
+	b2client := client.NewClient(&client.ApplicationCredentials{
+		KeyID:     os.Getenv("B2_KEY_ID"),
+		KeySecret: os.Getenv("B2_KEY_SECRET"),
+	})
+
 	c := cli.NewCLI("b2", version.Version)
 	c.Args = args
 	c.Commands = map[string]cli.CommandFactory{
 		"create": func() (cli.Command, error) {
 			return &bucket.CreateBucketCommand{
-				Ui: ui,
+				Ui:     ui,
+				Client: b2client,
 			}, nil
 		},
 		"version": func() (cli.Command, error) {

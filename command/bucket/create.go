@@ -6,10 +6,12 @@ import (
 	"strings"
 
 	"github.com/mitchellh/cli"
+	"github.com/romantomjak/b2/client"
 )
 
 type CreateBucketCommand struct {
-	Ui cli.Ui
+	Ui     cli.Ui
+	Client *client.Client
 }
 
 func (c *CreateBucketCommand) Help() string {
