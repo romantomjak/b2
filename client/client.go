@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/url"
 
@@ -11,6 +12,22 @@ const (
 	defaultBaseURL      = "https://api.backblazeb2.com/"
 	authorizeAccountURL = "b2api/v2/b2_authorize_account"
 )
+
+// authorizeAccount represents the authorization response from the B2 API
+type authorizeAccount struct {
+	AbsoluteMinimumPartSize int    `json:"absoluteMinimumPartSize"`
+	AccountID               string `json:"accountId"`
+	Allowed                 struct {
+		BucketID     string      `json:"bucketId"`
+		BucketName   string      `json:"bucketName"`
+		Capabilities []string    `json:"capabilities"`
+		NamePrefix   interface{} `json:"namePrefix"`
+	} `json:"allowed"`
+	APIURL              string `json:"apiUrl"`
+	AuthorizationToken  string `json:"authorizationToken"`
+	DownloadURL         string `json:"downloadUrl"`
+	RecommendedPartSize int    `json:"recommendedPartSize"`
+}
 
 // ApplicationCredentials are used to authorize the client
 type ApplicationCredentials struct {
@@ -61,6 +78,14 @@ func (c *Client) NewRequest(method, path string) (*http.Request, error) {
 		return nil, err
 	}
 
+	if c.Token == "" {
+		account, tokenErr := c.authorizeAccount()
+		if tokenErr != nil {
+			return nil, tokenErr
+		}
+		c.Token = account.AuthorizationToken
+	}
+
 	req.Header.Add("Authorization", c.Token)
 
 	return req, nil
@@ -82,4 +107,38 @@ func (c *Client) newRequest(method, path string) (*http.Request, error) {
 	req.Header.Add("User-Agent", c.UserAgent)
 
 	return req, nil
+}
+
+// authorizeAccount is used to log in to the B2 API
+func (c *Client) authorizeAccount() (*authorizeAccount, error) {
+	req, err := c.newRequest("POST", authorizeAccountURL)
+	if err != nil {
+		return nil, err
+	}
+
+	var account authorizeAccount
+	_, sendErr := c.Do(req, &account)
+	if sendErr != nil {
+		return nil, sendErr
+	}
+
+	return &account, nil
+}
+
+// Do sends an API request and returns the API response.
+//
+// The API response is JSON decoded and stored in the value pointed to by v.
+func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if v != nil {
+		err = json.NewDecoder(resp.Body).Decode(v)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return resp, err
 }
