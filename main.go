@@ -6,12 +6,12 @@ import (
 	"os"
 
 	"github.com/romantomjak/b2/client"
+	"github.com/romantomjak/b2/version"
 
 	"github.com/mitchellh/cli"
 
-	"github.com/romantomjak/b2/command"
 	"github.com/romantomjak/b2/command/bucket"
-	"github.com/romantomjak/b2/version"
+	versionCmd "github.com/romantomjak/b2/command/version"
 )
 
 func main() {
@@ -40,7 +40,7 @@ func Run(stdin io.Reader, stdout, stderr io.Writer, args []string) int {
 			}, nil
 		},
 		"version": func() (cli.Command, error) {
-			return &command.VersionCommand{
+			return &versionCmd.VersionCommand{
 				Ui:      ui,
 				Version: version.FullVersion(),
 			}, nil
