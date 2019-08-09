@@ -9,6 +9,7 @@ import (
 
 const (
 	defaultBaseURL      = "https://api.backblazeb2.com/"
+	authorizeAccountURL = "b2api/v2/b2_authorize_account"
 )
 
 // Client manages communication with Backblaze API
@@ -21,6 +22,9 @@ type Client struct {
 
 	// Base URL for API requests
 	BaseURL *url.URL
+
+	// Authorization token used for API calls
+	Token string
 }
 
 // NewClient returns a new Backblaze API client
@@ -39,6 +43,17 @@ func NewClient() *Client {
 // The path should always be specified without a preceding slash. It will be
 // resolved to the BaseURL of the Client.
 func (c *Client) NewRequest(method, path string) (*http.Request, error) {
+	req, err := c.newRequest(method, path)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Authorization", c.Token)
+
+	return req, nil
+}
+
+func (c *Client) newRequest(method, path string) (*http.Request, error) {
 	rel, err := url.Parse(path)
 	if err != nil {
 		return nil, err

@@ -3,8 +3,6 @@ package client
 import (
 	"net/http"
 	"testing"
-
-	"github.com/romantomjak/b2/config"
 )
 
 func assertStrings(t *testing.T, got, want string) {
@@ -20,11 +18,11 @@ func TestClient_NewClientDefaultValues(t *testing.T) {
 	assertStrings(t, c.BaseURL.String(), "https://api.backblazeb2.com/")
 }
 
-func TestClient_NewRequest(t *testing.T) {
-	cfg := config.FromEnv([]string{"B2_KEY_ID=mykey", "B2_KEY_SECRET=muchsecret"})
+func TestClient_NewRequestHeaders(t *testing.T) {
 	c := NewClient()
+	c.Token = "TEST"
 
-	req, _ := c.NewRequest(http.MethodGet, "foo", nil)
+	req, _ := c.NewRequest(http.MethodGet, "foo")
 
 	// test relative URL was expanded
 	assertStrings(t, req.URL.String(), "https://api.backblazeb2.com/foo")
@@ -32,4 +30,8 @@ func TestClient_NewRequest(t *testing.T) {
 	// test default user-agent is attached to the request
 	userAgent := req.Header.Get("User-Agent")
 	assertStrings(t, c.UserAgent, userAgent)
+
+	// test authorization token is attached to the request
+	authToken := req.Header.Get("Authorization")
+	assertStrings(t, authToken, "TEST")
 }
