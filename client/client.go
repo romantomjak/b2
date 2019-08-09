@@ -12,10 +12,22 @@ const (
 	authorizeAccountURL = "b2api/v2/b2_authorize_account"
 )
 
+// ApplicationCredentials are used to authorize the client
+type ApplicationCredentials struct {
+	// The ID of the key
+	KeyID string
+
+	// The secret part of the key
+	KeySecret string
+}
+
 // Client manages communication with Backblaze API
 type Client struct {
 	// HTTP client used to communicate with the B2 API
 	client *http.Client
+
+	// Credentials for authorizing the client
+	credentials *ApplicationCredentials
 
 	// User agent for client
 	UserAgent string
@@ -28,13 +40,14 @@ type Client struct {
 }
 
 // NewClient returns a new Backblaze API client
-func NewClient() *Client {
+func NewClient(credentials *ApplicationCredentials) *Client {
 	baseURL, _ := url.Parse(defaultBaseURL)
 
 	return &Client{
-		client:    http.DefaultClient,
-		UserAgent: "b2/" + version.Version + " (+https://github.com/romantomjak/b2)",
-		BaseURL:   baseURL,
+		client:      http.DefaultClient,
+		credentials: credentials,
+		UserAgent:   "b2/" + version.Version + " (+https://github.com/romantomjak/b2)",
+		BaseURL:     baseURL,
 	}
 }
 

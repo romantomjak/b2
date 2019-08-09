@@ -13,13 +13,13 @@ func assertStrings(t *testing.T, got, want string) {
 }
 
 func TestClient_NewClientDefaultValues(t *testing.T) {
-	c := NewClient()
+	c := NewClient(&ApplicationCredentials{"1234", "MYSECRET"})
 	assertStrings(t, c.UserAgent[:2], "b2")
 	assertStrings(t, c.BaseURL.String(), "https://api.backblazeb2.com/")
 }
 
 func TestClient_NewRequestHeaders(t *testing.T) {
-	c := NewClient()
+	c := NewClient(&ApplicationCredentials{"1234", "MYSECRET"})
 	c.Token = "TEST"
 
 	req, _ := c.NewRequest(http.MethodGet, "foo")
