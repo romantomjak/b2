@@ -14,7 +14,7 @@ func assertStrings(t *testing.T, got, want string) {
 	}
 }
 
-func TestClient_NewClient(t *testing.T) {
+func TestClient_NewClientDefaultValues(t *testing.T) {
 	c := NewClient()
 	assertStrings(t, c.UserAgent[:2], "b2")
 	assertStrings(t, c.BaseURL.String(), "https://api.backblazeb2.com/")
@@ -27,8 +27,7 @@ func TestClient_NewRequest(t *testing.T) {
 	req, _ := c.NewRequest(http.MethodGet, "foo", nil)
 
 	// test relative URL was expanded
-	assertStrings(t, req.URL.String(), cfg.AuthorizationBaseURL.String()+"foo")
-
+	assertStrings(t, req.URL.String(), "https://api.backblazeb2.com/foo")
 
 	// test default user-agent is attached to the request
 	userAgent := req.Header.Get("User-Agent")

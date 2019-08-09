@@ -7,6 +7,10 @@ import (
 	"github.com/romantomjak/b2/version"
 )
 
+const (
+	defaultBaseURL      = "https://api.backblazeb2.com/"
+)
+
 // Client manages communication with Backblaze API
 type Client struct {
 	// HTTP client used to communicate with the B2 API
@@ -21,9 +25,7 @@ type Client struct {
 
 // NewClient returns a new Backblaze API client
 func NewClient() *Client {
-	// This will be replaced with a new URL returned by the
-	// account authorization API call.
-	baseURL, _ := url.Parse("https://api.backblazeb2.com/")
+	baseURL, _ := url.Parse(defaultBaseURL)
 
 	return &Client{
 		client:    http.DefaultClient,
