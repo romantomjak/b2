@@ -84,7 +84,11 @@ func (c *Client) NewRequest(method, path string, body interface{}) (*http.Reques
 		if tokenErr != nil {
 			return nil, tokenErr
 		}
-		c.reconfigureClient(account)
+
+		accountErr := c.reconfigureClient(account)
+		if accountErr != nil {
+			return nil, accountErr
+		}
 	}
 
 	req, err := c.newRequest(method, path, body)
