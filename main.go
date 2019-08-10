@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/mitchellh/cli"
-	"github.com/romantomjak/b2/client"
+	b2 "github.com/romantomjak/b2/api"
 	"github.com/romantomjak/b2/command"
 	"github.com/romantomjak/b2/version"
 )
@@ -22,7 +22,7 @@ func Run(stdin io.Reader, stdout, stderr io.Writer, args []string) int {
 		ErrorWriter: stderr,
 	}
 
-	b2client := client.NewClient(&client.ApplicationCredentials{
+	b2client := b2.NewClient(&b2.ApplicationCredentials{
 		KeyID:     os.Getenv("B2_KEY_ID"),
 		KeySecret: os.Getenv("B2_KEY_SECRET"),
 	})
