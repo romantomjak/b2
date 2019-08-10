@@ -101,6 +101,7 @@ func (c *Client) NewRequest(method, path string, body interface{}) (*http.Reques
 	return req, nil
 }
 
+// newRequest prepares a new Request
 func (c *Client) newRequest(method, path string, body interface{}) (*http.Request, error) {
 	rel, err := url.Parse(path)
 	if err != nil {
@@ -129,7 +130,7 @@ func (c *Client) newRequest(method, path string, body interface{}) (*http.Reques
 
 // authorizeAccount is used to log in to the B2 API
 //
-// This must be the very first API call
+// This must be the very first API call to obtain essential account information
 func (c *Client) authorizeAccount() (*authorizeAccount, error) {
 	req, err := c.newRequest(http.MethodGet, authorizeAccountURL, nil)
 	if err != nil {
