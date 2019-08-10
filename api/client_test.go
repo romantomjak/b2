@@ -42,13 +42,13 @@ func assertHttpMethod(t *testing.T, got, want string) {
 	}
 }
 
-func TestClient_NewClientDefaultValues(t *testing.T) {
+func TestClient_NewClientDefaults(t *testing.T) {
 	c := NewClient(&ApplicationCredentials{"1234", "MYSECRET"})
 	assertStrings(t, c.UserAgent[:2], "b2")
 	assertStrings(t, c.BaseURL.String(), "https://api.backblazeb2.com/")
 }
 
-func TestClient_NewRequest(t *testing.T) {
+func TestClient_NewRequestDefauls(t *testing.T) {
 	c := NewClient(&ApplicationCredentials{"1234", "MYSECRET"})
 	c.Token = "TEST"
 
@@ -72,7 +72,7 @@ func TestClient_NewRequest(t *testing.T) {
 	assertStrings(t, string(body), outBody)
 }
 
-func TestClient_Authentication(t *testing.T) {
+func TestClient_NewRequestAuthentication(t *testing.T) {
 	setup()
 	defer teardown()
 
