@@ -1,6 +1,7 @@
-package client
+package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -60,20 +61,25 @@ type Client struct {
 func NewClient(credentials *ApplicationCredentials) *Client {
 	baseURL, _ := url.Parse(defaultBaseURL)
 
-	return &Client{
+	client := &Client{
 		client:      http.DefaultClient,
 		credentials: credentials,
 		UserAgent:   "b2/" + version.Version + " (+https://github.com/romantomjak/b2)",
 		BaseURL:     baseURL,
 	}
+
+	return client
 }
 
 // NewRequest creates an API request suitable for use with Client.Do
 //
 // The path should always be specified without a preceding slash. It will be
 // resolved to the BaseURL of the Client.
-func (c *Client) NewRequest(method, path string) (*http.Request, error) {
-	req, err := c.newRequest(method, path)
+//
+// If specified, the value pointed to by body is JSON encoded and included in
+// as the request body.
+func (c *Client) NewRequest(method, path string, body interface{}) (*http.Request, error) {
+	req, err := c.newRequest(method, path, body)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +97,7 @@ func (c *Client) NewRequest(method, path string) (*http.Request, error) {
 	return req, nil
 }
 
-func (c *Client) newRequest(method, path string) (*http.Request, error) {
+func (c *Client) newRequest(method, path string, body interface{}) (*http.Request, error) {
 	rel, err := url.Parse(path)
 	if err != nil {
 		return nil, err
@@ -99,7 +105,15 @@ func (c *Client) newRequest(method, path string) (*http.Request, error) {
 
 	u := c.BaseURL.ResolveReference(rel)
 
-	req, err := http.NewRequest(method, u.String(), nil)
+	buf := new(bytes.Buffer)
+	if body != nil {
+		err = json.NewEncoder(buf).Encode(body)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	req, err := http.NewRequest(method, u.String(), buf)
 	if err != nil {
 		return nil, err
 	}
@@ -111,18 +125,20 @@ func (c *Client) newRequest(method, path string) (*http.Request, error) {
 
 // authorizeAccount is used to log in to the B2 API
 func (c *Client) authorizeAccount() (*authorizeAccount, error) {
-	req, err := c.newRequest("POST", authorizeAccountURL)
+	req, err := c.newRequest(http.MethodGet, authorizeAccountURL, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var account authorizeAccount
+	req.SetBasicAuth(c.credentials.KeyID, c.credentials.KeySecret)
+
+	account := new(authorizeAccount)
 	_, sendErr := c.Do(req, &account)
 	if sendErr != nil {
 		return nil, sendErr
 	}
 
-	return &account, nil
+	return account, nil
 }
 
 // Do sends an API request and returns the API response.

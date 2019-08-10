@@ -1,7 +1,8 @@
-package client
+package api
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -47,11 +48,13 @@ func TestClient_NewClientDefaultValues(t *testing.T) {
 	assertStrings(t, c.BaseURL.String(), "https://api.backblazeb2.com/")
 }
 
-func TestClient_NewRequestHeaders(t *testing.T) {
+func TestClient_NewRequest(t *testing.T) {
 	c := NewClient(&ApplicationCredentials{"1234", "MYSECRET"})
 	c.Token = "TEST"
 
-	req, _ := c.NewRequest(http.MethodGet, "foo")
+	inBody := map[string]string{"foo": "bar", "hello": "world"}
+	outBody := `{"foo":"bar","hello":"world"}` + "\n"
+	req, _ := c.NewRequest(http.MethodPost, "foo", inBody)
 
 	// test relative URL was expanded
 	assertStrings(t, req.URL.String(), "https://api.backblazeb2.com/foo")
@@ -63,6 +66,10 @@ func TestClient_NewRequestHeaders(t *testing.T) {
 	// test authorization token is attached to the request
 	authToken := req.Header.Get("Authorization")
 	assertStrings(t, authToken, "TEST")
+
+	// test body was JSON encoded
+	body, _ := ioutil.ReadAll(req.Body)
+	assertStrings(t, string(body), outBody)
 }
 
 func TestClient_AcquiresNewTokenWhenTokenIsNotSet(t *testing.T) {
@@ -88,7 +95,7 @@ func TestClient_AcquiresNewTokenWhenTokenIsNotSet(t *testing.T) {
 		}`)
 	})
 
-	req, _ := client.NewRequest(http.MethodGet, "foo")
+	req, _ := client.NewRequest(http.MethodGet, "foo", nil)
 
 	authToken := req.Header.Get("Authorization")
 	assertStrings(t, authToken, "4_0022623512fc8f80000000001_0186e431_d18d02_acct_tH7VW03boebOXayIc43-sxptpfA=")
