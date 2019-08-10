@@ -72,12 +72,12 @@ func TestClient_NewRequest(t *testing.T) {
 	assertStrings(t, string(body), outBody)
 }
 
-func TestClient_AcquiresNewTokenWhenTokenIsNotSet(t *testing.T) {
+func TestClient_Authentication(t *testing.T) {
 	setup()
 	defer teardown()
 
 	mux.HandleFunc("/"+authorizeAccountURL, func(w http.ResponseWriter, r *http.Request) {
-		assertHttpMethod(t, r.Method, "POST")
+		assertHttpMethod(t, r.Method, "GET")
 
 		fmt.Fprint(w, `{
 			"absoluteMinimumPartSize": 5000000,
@@ -95,8 +95,14 @@ func TestClient_AcquiresNewTokenWhenTokenIsNotSet(t *testing.T) {
 		}`)
 	})
 
+	// the HTTP method here is irrevelant because the authentication call will
+	// be issued before the prepared request is returned
 	req, _ := client.NewRequest(http.MethodGet, "foo", nil)
 
+	// test authorization token is set
 	authToken := req.Header.Get("Authorization")
 	assertStrings(t, authToken, "4_0022623512fc8f80000000001_0186e431_d18d02_acct_tH7VW03boebOXayIc43-sxptpfA=")
+
+	// test base url from the authorization response is set
+	assertStrings(t, client.BaseURL.String(), "https://api123.backblazeb2.com")
 }

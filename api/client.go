@@ -79,17 +79,17 @@ func NewClient(credentials *ApplicationCredentials) *Client {
 // If specified, the value pointed to by body is JSON encoded and included in
 // as the request body.
 func (c *Client) NewRequest(method, path string, body interface{}) (*http.Request, error) {
-	req, err := c.newRequest(method, path, body)
-	if err != nil {
-		return nil, err
-	}
-
 	if c.Token == "" {
 		account, tokenErr := c.authorizeAccount()
 		if tokenErr != nil {
 			return nil, tokenErr
 		}
-		c.Token = account.AuthorizationToken
+		c.reconfigureClient(account)
+	}
+
+	req, err := c.newRequest(method, path, body)
+	if err != nil {
+		return nil, err
 	}
 
 	req.Header.Add("Authorization", c.Token)
@@ -124,6 +124,8 @@ func (c *Client) newRequest(method, path string, body interface{}) (*http.Reques
 }
 
 // authorizeAccount is used to log in to the B2 API
+//
+// This must be the very first API call
 func (c *Client) authorizeAccount() (*authorizeAccount, error) {
 	req, err := c.newRequest(http.MethodGet, authorizeAccountURL, nil)
 	if err != nil {
@@ -157,4 +159,20 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 		}
 	}
 	return resp, err
+}
+
+// reconfigureClient is used to configure the client after authentication
+//
+// Authorization API call returns a token and a URL that should be used as
+// the base URL for subsequent API calls
+func (c *Client) reconfigureClient(account *authorizeAccount) error {
+	c.Token = account.AuthorizationToken
+
+	newBaseURL, err := url.Parse(account.APIURL)
+	if err != nil {
+		return err
+	}
+	c.BaseURL = newBaseURL
+
+	return nil
 }
