@@ -14,6 +14,15 @@ This project is in development phase. I highly recommend you to use b2 with go m
 go get -u github.com/romantomjak/b2
 ```
 
+## Usage
+
+```sh
+$ export B2_KEY_ID=1234
+$ export B2_KEY_SECRET=MYSECRET
+$ b2 create my-globally-unique-bucket-name
+Bucket "my-globally-unique-bucket-name" created with ID "123b2bucketid8"
+```
+
 ## TODO
 
 First I'll be focusing on creating Buckets. This is the progress so far:
