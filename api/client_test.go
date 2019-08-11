@@ -105,4 +105,7 @@ func TestClient_NewRequestAuthentication(t *testing.T) {
 
 	// test base url from the authorization response is set
 	assertStrings(t, client.BaseURL.String(), "https://api123.backblazeb2.com")
+
+	// test account id is set
+	assertStrings(t, client.AccountID, "abc123")
 }

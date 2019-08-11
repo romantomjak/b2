@@ -55,6 +55,9 @@ type Client struct {
 
 	// Authorization token used for API calls
 	Token string
+
+	// The identifier for the account
+	AccountID string
 }
 
 // NewClient returns a new Backblaze API client
@@ -172,6 +175,7 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 // the base URL for subsequent API calls
 func (c *Client) reconfigureClient(account *authorizeAccount) error {
 	c.Token = account.AuthorizationToken
+	c.AccountID = account.AccountID
 
 	newBaseURL, err := url.Parse(account.APIURL)
 	if err != nil {
