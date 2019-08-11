@@ -58,20 +58,25 @@ type Client struct {
 
 	// The identifier for the account
 	AccountID string
+
+	// Services used for communicating with the API
+	Bucket *BucketService
 }
 
 // NewClient returns a new Backblaze API client
 func NewClient(credentials *ApplicationCredentials) *Client {
 	baseURL, _ := url.Parse(defaultBaseURL)
 
-	client := &Client{
+	c := &Client{
 		client:      http.DefaultClient,
 		credentials: credentials,
 		UserAgent:   "b2/" + version.Version + " (+https://github.com/romantomjak/b2)",
 		BaseURL:     baseURL,
 	}
 
-	return client
+	c.Bucket = &BucketService{client: c}
+
+	return c
 }
 
 // NewRequest creates an API request suitable for use with Client.Do

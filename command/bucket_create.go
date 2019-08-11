@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/mitchellh/cli"
-	b2 "github.com/romantomjak/b2/client"
+	b2 "github.com/romantomjak/b2/api"
 )
 
 type CreateBucketCommand struct {
@@ -64,7 +64,20 @@ func (c *CreateBucketCommand) Run(args []string) int {
 	// Get the bucket name
 	bucketName := args[0]
 
-	c.Ui.Output(fmt.Sprintf("Successfully created %q Bucket!", bucketName))
+	// Create the bucket
+	b := &b2.BucketCreateRequest{
+		AccountID: c.Client.AccountID,
+		Name:      bucketName,
+		Type:      "all" + strings.Title(bucketType),
+	}
+
+	bucket, _, err := c.Client.Bucket.Create(b)
+	if err != nil {
+		c.Ui.Error(fmt.Sprintf("%v", err))
+		return 1
+	}
+
+	c.Ui.Output(fmt.Sprintf("Bucket %q created with ID %q", bucket.Name, bucket.ID))
 
 	return 0
 }
