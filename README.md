@@ -32,6 +32,12 @@ First I'll be focusing on creating Buckets. This is the progress so far:
 - [ ] List all buckets
 - [ ] Update settings for a bucket
 
+## Contributing
+
+You can contribute in many ways and not just by changing the code! If you have any ideas, just open an issue and tell me what you think.
+
+Contributing code-wise - please fork the repository and submit a pull request.
+
 ## License
 
 MIT
