@@ -61,13 +61,10 @@ func (c *CreateBucketCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Get the bucket name
-	bucketName := args[0]
-
 	// Create the bucket
 	b := &b2.BucketCreateRequest{
 		AccountID: c.Client.AccountID,
-		Name:      bucketName,
+		Name:      args[0],
 		Type:      "all" + strings.Title(bucketType),
 	}
 
