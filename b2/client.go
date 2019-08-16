@@ -7,31 +7,13 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 
 	"github.com/romantomjak/b2/version"
 )
 
 const (
-	defaultBaseURL      = "https://api.backblazeb2.com/"
-	authorizeAccountURL = "b2api/v2/b2_authorize_account"
+	defaultBaseURL = "https://api.backblazeb2.com/"
 )
-
-// authorizeAccount represents the authorization response from the B2 API
-type authorizeAccount struct {
-	AbsoluteMinimumPartSize int    `json:"absoluteMinimumPartSize"`
-	AccountID               string `json:"accountId"`
-	Allowed                 struct {
-		BucketID     string      `json:"bucketId"`
-		BucketName   string      `json:"bucketName"`
-		Capabilities []string    `json:"capabilities"`
-		NamePrefix   interface{} `json:"namePrefix"`
-	} `json:"allowed"`
-	APIURL              string `json:"apiUrl"`
-	AuthorizationToken  string `json:"authorizationToken"`
-	DownloadURL         string `json:"downloadUrl"`
-	RecommendedPartSize int    `json:"recommendedPartSize"`
-}
 
 // An errorResponse contains the error caused by an API request
 type errorResponse struct {
@@ -43,15 +25,6 @@ type errorResponse struct {
 // HTTPClient interface can be satisfied by any http.Client
 type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
-}
-
-// ApplicationCredentials are used to authorize the client
-type ApplicationCredentials struct {
-	// The ID of the key
-	KeyID string
-
-	// The secret part of the key
-	KeySecret string
 }
 
 // Client manages communication with Backblaze API
@@ -151,26 +124,6 @@ func (c *Client) newRequest(method, path string, body interface{}) (*http.Reques
 	return req, nil
 }
 
-// authorizeAccount is used to log in to the B2 API
-//
-// This must be the very first API call to obtain essential account information
-func (c *Client) authorizeAccount() (*authorizeAccount, error) {
-	req, err := c.newRequest(http.MethodGet, authorizeAccountURL, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.SetBasicAuth(os.Getenv("B2_KEY_ID"), os.Getenv("B2_KEY_SECRET"))
-
-	account := new(authorizeAccount)
-	_, err = c.Do(req, &account)
-	if err != nil {
-		return nil, err
-	}
-
-	return account, nil
-}
-
 // Do sends an API request and returns the API response
 //
 // The API response is JSON decoded and stored in the value pointed to by v
@@ -194,23 +147,6 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 	}
 
 	return resp, err
-}
-
-// reconfigureClient is used to configure the client after authentication
-//
-// Authorization API call returns a token and a URL that should be used as
-// the base URL for subsequent API calls
-func (c *Client) reconfigureClient(account *authorizeAccount) error {
-	c.Token = account.AuthorizationToken
-	c.AccountID = account.AccountID
-
-	newBaseURL, err := url.Parse(account.APIURL)
-	if err != nil {
-		return err
-	}
-	c.BaseURL = newBaseURL
-
-	return nil
 }
 
 // checkResponse checks the API response for errors and returns them if present
