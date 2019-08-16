@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -32,6 +33,13 @@ func assertStrings(t *testing.T, got, want string) {
 	t.Helper()
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func assertContains(t *testing.T, got, want string) {
+	t.Helper()
+	if !strings.Contains(got, want) {
+		t.Fatalf("expected %q to contain %q, but it didn't", got, want)
 	}
 }
 
@@ -108,4 +116,25 @@ func TestClient_NewRequestAuthentication(t *testing.T) {
 
 	// test account id is set
 	assertStrings(t, client.AccountID, "abc123")
+}
+
+func TestClient_APIErrorsAreReportedToUser(t *testing.T) {
+	setup()
+	defer teardown()
+
+	mux.HandleFunc("/"+authorizeAccountURL, func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, `{
+			"status" : 401,
+			"code" : "unauthorized",
+			"message" : "The applicationKeyId and/or the applicationKey are wrong."
+		}`)
+	})
+
+	// the HTTP method here is irrevelant because the authentication call will
+	// be issued before the prepared request is returned
+	_, err := client.NewRequest(http.MethodGet, "foo", nil)
+
+	// test authorization error is reported to the user
+	assertContains(t, err.Error(), "The applicationKeyId and/or the applicationKey are wrong.")
 }

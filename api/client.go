@@ -3,6 +3,9 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 
@@ -28,6 +31,13 @@ type authorizeAccount struct {
 	AuthorizationToken  string `json:"authorizationToken"`
 	DownloadURL         string `json:"downloadUrl"`
 	RecommendedPartSize int    `json:"recommendedPartSize"`
+}
+
+// An errorResponse contains the error caused by an API request
+type errorResponse struct {
+	Status  int    `json:"status"`
+	Code    string `json:"code"`
+	Message string `json:"message"`
 }
 
 // ApplicationCredentials are used to authorize the client
@@ -156,21 +166,28 @@ func (c *Client) authorizeAccount() (*authorizeAccount, error) {
 	return account, nil
 }
 
-// Do sends an API request and returns the API response.
+// Do sends an API request and returns the API response
 //
-// The API response is JSON decoded and stored in the value pointed to by v.
+// The API response is JSON decoded and stored in the value pointed to by v
 func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	err = c.checkResponse(resp)
+	if err != nil {
+		return resp, fmt.Errorf("api: %v", err)
+	}
+
 	if v != nil {
 		err = json.NewDecoder(resp.Body).Decode(v)
 		if err != nil {
 			return nil, err
 		}
 	}
+
 	return resp, err
 }
 
@@ -189,4 +206,29 @@ func (c *Client) reconfigureClient(account *authorizeAccount) error {
 	c.BaseURL = newBaseURL
 
 	return nil
+}
+
+// checkResponse checks the API response for errors and returns them if present
+//
+// Any code other than 2xx is an error, and the response will contain a JSON
+// error structure indicating what went wrong
+func (c *Client) checkResponse(r *http.Response) error {
+	if r.StatusCode >= 200 && r.StatusCode <= 299 {
+		return nil
+	}
+
+	data, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	if len(data) == 0 {
+		return errors.New("empty error body")
+	}
+
+	errResp := new(errorResponse)
+	err = json.Unmarshal(data, errResp)
+	if err != nil {
+		errResp.Message = string(data)
+	}
+	return fmt.Errorf("%v %v", errResp.Code, errResp.Message)
 }
