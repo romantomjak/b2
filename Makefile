@@ -6,12 +6,13 @@ GO_LDFLAGS := "-X github.com/romantomjak/b2/version.GitCommit=$(GIT_COMMIT)"
 
 .PHONY: build
 build:
-	go build -ldflags $(GO_LDFLAGS) -o b2
+	@mkdir -p $(PROJECT_ROOT)/bin
+	@go build -ldflags $(GO_LDFLAGS) -o bin/b2
 
 .PHONY: test
 test:
-	go test -cover $(GO_PKGS)
+	@go test -cover $(GO_PKGS)
 
 .PHONY: clean
 clean:
-	@rm -f "$(PROJECT_ROOT)/b2"
+	@rm -rf "$(PROJECT_ROOT)/bin/"

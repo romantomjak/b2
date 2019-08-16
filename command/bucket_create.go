@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/mitchellh/cli"
-	b2 "github.com/romantomjak/b2/api"
+	"github.com/romantomjak/b2/b2"
 )
 
 type CreateBucketCommand struct {

@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/mitchellh/cli"
-	b2 "github.com/romantomjak/b2/api"
+	"github.com/romantomjak/b2/b2"
 	"github.com/romantomjak/b2/command"
 	"github.com/romantomjak/b2/version"
 )
