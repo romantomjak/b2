@@ -70,7 +70,7 @@ func (c *CreateBucketCommand) Run(args []string) int {
 
 	bucket, _, err := c.Client.Bucket.Create(b)
 	if err != nil {
-		c.Ui.Error(fmt.Sprintf("%v", err))
+		c.Ui.Error(fmt.Sprintf("Error: %v", err))
 		return 1
 	}
 

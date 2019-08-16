@@ -3,7 +3,6 @@ package api
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -98,14 +97,14 @@ func NewClient(credentials *ApplicationCredentials) *Client {
 // as the request body.
 func (c *Client) NewRequest(method, path string, body interface{}) (*http.Request, error) {
 	if c.Token == "" {
-		account, tokenErr := c.authorizeAccount()
-		if tokenErr != nil {
-			return nil, tokenErr
+		account, err := c.authorizeAccount()
+		if err != nil {
+			return nil, fmt.Errorf("authorization: %v", err)
 		}
 
-		accountErr := c.reconfigureClient(account)
-		if accountErr != nil {
-			return nil, accountErr
+		err = c.reconfigureClient(account)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -158,9 +157,9 @@ func (c *Client) authorizeAccount() (*authorizeAccount, error) {
 	req.SetBasicAuth(c.credentials.KeyID, c.credentials.KeySecret)
 
 	account := new(authorizeAccount)
-	_, sendErr := c.Do(req, &account)
-	if sendErr != nil {
-		return nil, sendErr
+	_, err = c.Do(req, &account)
+	if err != nil {
+		return nil, err
 	}
 
 	return account, nil
@@ -222,7 +221,7 @@ func (c *Client) checkResponse(r *http.Response) error {
 		return err
 	}
 	if len(data) == 0 {
-		return errors.New("empty error body")
+		return fmt.Errorf("%v %v: empty error body", r.Request.Method, r.Request.URL)
 	}
 
 	errResp := new(errorResponse)
@@ -230,5 +229,5 @@ func (c *Client) checkResponse(r *http.Response) error {
 	if err != nil {
 		errResp.Message = string(data)
 	}
-	return fmt.Errorf("%v %v", errResp.Code, errResp.Message)
+	return fmt.Errorf("%v %v: %v %v", r.Request.Method, r.Request.URL, errResp.Code, errResp.Message)
 }
