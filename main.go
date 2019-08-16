@@ -36,6 +36,12 @@ func Run(stdin io.Reader, stdout, stderr io.Writer, args []string) int {
 				Client: b2client,
 			}, nil
 		},
+		"list": func() (cli.Command, error) {
+			return &command.ListCommand{
+				Ui:     ui,
+				Client: b2client,
+			}, nil
+		},
 		"version": func() (cli.Command, error) {
 			return &command.VersionCommand{
 				Ui:      ui,

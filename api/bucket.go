@@ -6,6 +6,7 @@ import (
 
 const (
 	createBucketURL = "b2api/v2/b2_create_bucket"
+	listBucketsURL  = "b2api/v2/b2_list_buckets"
 )
 
 // Bucket is used to represent a B2 Bucket
@@ -50,6 +51,18 @@ type BucketLifecycleRule struct {
 	FileNamePrefix            string `json:"fileNamePrefix"`
 }
 
+// BucketListRequest represents a request to list Buckets
+type BucketListRequest struct {
+	AccountID string `json:"accountId"`
+	BucketID  string `json:"bucketId,omitempty"`
+	Name      string `json:"bucketName,omitempty"`
+	Types     string `json:"bucketTypes,omitempty"`
+}
+
+type bucketListRoot struct {
+	Buckets []Bucket `json:"buckets"`
+}
+
 // BucketService handles communication with the Bucket related methods of the
 // B2 API
 type BucketService struct {
@@ -70,4 +83,20 @@ func (s *BucketService) Create(createRequest *BucketCreateRequest) (*Bucket, *ht
 	}
 
 	return bucket, resp, err
+}
+
+// List all Buckets
+func (s *BucketService) List(listRequest *BucketListRequest) ([]Bucket, *http.Response, error) {
+	req, err := s.client.NewRequest(http.MethodPost, listBucketsURL, listRequest)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	root := new(bucketListRoot)
+	resp, err := s.client.Do(req, root)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	return root.Buckets, resp, err
 }

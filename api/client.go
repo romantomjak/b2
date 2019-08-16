@@ -129,7 +129,7 @@ func (c *Client) newRequest(method, path string, body interface{}) (*http.Reques
 
 	buf := new(bytes.Buffer)
 	if body != nil {
-		err = json.NewEncoder(buf).Encode(body)
+		err := json.NewEncoder(buf).Encode(body)
 		if err != nil {
 			return nil, err
 		}
@@ -181,7 +181,7 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 	}
 
 	if v != nil {
-		err = json.NewDecoder(resp.Body).Decode(v)
+		err := json.NewDecoder(resp.Body).Decode(v)
 		if err != nil {
 			return nil, err
 		}

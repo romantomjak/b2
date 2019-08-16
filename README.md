@@ -29,7 +29,7 @@ First I'll be focusing on creating Buckets. This is the progress so far:
 
 - [x] Create a new bucket
 - [ ] Delete bucket
-- [ ] List all buckets
+- [x] List all buckets
 - [ ] Update settings for a bucket
 
 ## Contributing
