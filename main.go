@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 
 	"github.com/mitchellh/cli"
@@ -22,10 +23,7 @@ func Run(stdin io.Reader, stdout, stderr io.Writer, args []string) int {
 		ErrorWriter: stderr,
 	}
 
-	b2client := b2.NewClient(&b2.ApplicationCredentials{
-		KeyID:     os.Getenv("B2_KEY_ID"),
-		KeySecret: os.Getenv("B2_KEY_SECRET"),
-	})
+	b2client := b2.NewClient(http.DefaultClient)
 
 	c := cli.NewCLI("b2", version.Version)
 	c.Args = args

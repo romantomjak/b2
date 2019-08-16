@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 
 	"github.com/romantomjak/b2/version"
 )
@@ -39,6 +40,11 @@ type errorResponse struct {
 	Message string `json:"message"`
 }
 
+// HTTPClient interface can be satisfied by any http.Client
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
 // ApplicationCredentials are used to authorize the client
 type ApplicationCredentials struct {
 	// The ID of the key
@@ -51,10 +57,7 @@ type ApplicationCredentials struct {
 // Client manages communication with Backblaze API
 type Client struct {
 	// HTTP client used to communicate with the B2 API
-	client *http.Client
-
-	// Credentials for authorizing the client
-	credentials *ApplicationCredentials
+	client HTTPClient
 
 	// User agent for client
 	UserAgent string
@@ -73,14 +76,17 @@ type Client struct {
 }
 
 // NewClient returns a new Backblaze API client
-func NewClient(credentials *ApplicationCredentials) *Client {
+func NewClient(httpClient HTTPClient) *Client {
+	if httpClient == nil {
+		httpClient = http.DefaultClient
+	}
+
 	baseURL, _ := url.Parse(defaultBaseURL)
 
 	c := &Client{
-		client:      http.DefaultClient,
-		credentials: credentials,
-		UserAgent:   "b2/" + version.Version + " (+https://github.com/romantomjak/b2)",
-		BaseURL:     baseURL,
+		client:    httpClient,
+		UserAgent: "b2/" + version.Version + " (+https://github.com/romantomjak/b2)",
+		BaseURL:   baseURL,
 	}
 
 	c.Bucket = &BucketService{client: c}
@@ -154,7 +160,7 @@ func (c *Client) authorizeAccount() (*authorizeAccount, error) {
 		return nil, err
 	}
 
-	req.SetBasicAuth(c.credentials.KeyID, c.credentials.KeySecret)
+	req.SetBasicAuth(os.Getenv("B2_KEY_ID"), os.Getenv("B2_KEY_SECRET"))
 
 	account := new(authorizeAccount)
 	_, err = c.Do(req, &account)

@@ -1,106 +1,60 @@
 package b2
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net/http"
-	"net/http/httptest"
-	"net/url"
-	"strings"
 	"testing"
+
+	"github.com/romantomjak/b2/testutil"
 )
-
-var (
-	mux    *http.ServeMux
-	client *Client
-	server *httptest.Server
-)
-
-func setup() {
-	mux = http.NewServeMux()
-	server = httptest.NewServer(mux)
-
-	client = NewClient(&ApplicationCredentials{"1234", "MYSECRET"})
-	url, _ := url.Parse(server.URL)
-	client.BaseURL = url
-}
-
-func teardown() {
-	server.Close()
-}
-
-func assertStrings(t *testing.T, got, want string) {
-	t.Helper()
-	if got != want {
-		t.Errorf("got %q, want %q", got, want)
-	}
-}
-
-func assertContains(t *testing.T, got, want string) {
-	t.Helper()
-	if !strings.Contains(got, want) {
-		t.Fatalf("expected %q to contain %q, but it didn't", got, want)
-	}
-}
-
-func assertHttpMethod(t *testing.T, got, want string) {
-	t.Helper()
-	if got != want {
-		t.Errorf("got %+v, want %+v", got, want)
-	}
-}
 
 func TestClient_NewClientDefaults(t *testing.T) {
-	c := NewClient(&ApplicationCredentials{"1234", "MYSECRET"})
-	assertStrings(t, c.UserAgent[:2], "b2")
-	assertStrings(t, c.BaseURL.String(), "https://api.backblazeb2.com/")
+	client := NewClient(nil)
+	testutil.AssertEqual(t, client.UserAgent[:2], "b2")
+	testutil.AssertEqual(t, client.BaseURL.String(), "https://api.backblazeb2.com/")
 }
 
 func TestClient_NewRequestDefauls(t *testing.T) {
-	c := NewClient(&ApplicationCredentials{"1234", "MYSECRET"})
-	c.Token = "TEST"
+	client := NewClient(nil)
+	client.Token = "TEST"
 
 	inBody := map[string]string{"foo": "bar", "hello": "world"}
 	outBody := `{"foo":"bar","hello":"world"}` + "\n"
-	req, _ := c.NewRequest(http.MethodPost, "foo", inBody)
+	req, _ := client.NewRequest(http.MethodPost, "foo", inBody)
 
 	// test relative URL was expanded
-	assertStrings(t, req.URL.String(), "https://api.backblazeb2.com/foo")
+	testutil.AssertEqual(t, req.URL.String(), "https://api.backblazeb2.com/foo")
 
 	// test default user-agent is attached to the request
 	userAgent := req.Header.Get("User-Agent")
-	assertStrings(t, c.UserAgent, userAgent)
+	testutil.AssertEqual(t, client.UserAgent, userAgent)
 
 	// test authorization token is attached to the request
 	authToken := req.Header.Get("Authorization")
-	assertStrings(t, authToken, "TEST")
+	testutil.AssertEqual(t, authToken, "TEST")
 
 	// test body was JSON encoded
 	body, _ := ioutil.ReadAll(req.Body)
-	assertStrings(t, string(body), outBody)
+	testutil.AssertEqual(t, string(body), outBody)
 }
 
 func TestClient_NewRequestAuthentication(t *testing.T) {
-	setup()
-	defer teardown()
-
-	mux.HandleFunc("/"+authorizeAccountURL, func(w http.ResponseWriter, r *http.Request) {
-		assertHttpMethod(t, r.Method, "GET")
-
-		fmt.Fprint(w, `{
-			"absoluteMinimumPartSize": 5000000,
-			"accountId": "abc123",
-			"allowed": {
-			  "bucketId": "my-bucket",
-			  "bucketName": "MY BUCKET",
-			  "capabilities": ["listBuckets","listFiles","readFiles","shareFiles","writeFiles","deleteFiles"],
-			  "namePrefix": null
-			},
-			"apiUrl": "https://api123.backblazeb2.com",
-			"authorizationToken": "4_0022623512fc8f80000000001_0186e431_d18d02_acct_tH7VW03boebOXayIc43-sxptpfA=",
-			"downloadUrl": "https://f002.backblazeb2.com",
-			"recommendedPartSize": 100000000
-		}`)
+	body := `{
+		"absoluteMinimumPartSize": 5000000,
+		"accountId": "abc123",
+		"allowed": {
+		  "bucketId": "my-bucket",
+		  "bucketName": "MY BUCKET",
+		  "capabilities": ["listBuckets","listFiles","readFiles","shareFiles","writeFiles","deleteFiles"],
+		  "namePrefix": null
+		},
+		"apiUrl": "https://api123.backblazeb2.com",
+		"authorizationToken": "4_0022623512fc8f80000000001_0186e431_d18d02_acct_tH7VW03boebOXayIc43-sxptpfA=",
+		"downloadUrl": "https://f002.backblazeb2.com",
+		"recommendedPartSize": 100000000
+	}`
+	client := NewClient(&testutil.FakeHTTPClient{
+		Response: testutil.HTTPResponse(http.StatusOK, body),
 	})
 
 	// the HTTP method here is irrevelant because the authentication call will
@@ -109,26 +63,23 @@ func TestClient_NewRequestAuthentication(t *testing.T) {
 
 	// test authorization token is set
 	authToken := req.Header.Get("Authorization")
-	assertStrings(t, authToken, "4_0022623512fc8f80000000001_0186e431_d18d02_acct_tH7VW03boebOXayIc43-sxptpfA=")
+	testutil.AssertEqual(t, authToken, "4_0022623512fc8f80000000001_0186e431_d18d02_acct_tH7VW03boebOXayIc43-sxptpfA=")
 
 	// test base url from the authorization response is set
-	assertStrings(t, client.BaseURL.String(), "https://api123.backblazeb2.com")
+	testutil.AssertEqual(t, client.BaseURL.String(), "https://api123.backblazeb2.com")
 
 	// test account id is set
-	assertStrings(t, client.AccountID, "abc123")
+	testutil.AssertEqual(t, client.AccountID, "abc123")
 }
 
 func TestClient_APIErrorsAreReportedToUser(t *testing.T) {
-	setup()
-	defer teardown()
-
-	mux.HandleFunc("/"+authorizeAccountURL, func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, `{
-			"status" : 401,
-			"code" : "unauthorized",
-			"message" : "The applicationKeyId and/or the applicationKey are wrong."
-		}`)
+	body := `{
+		"status" : 401,
+		"code" : "unauthorized",
+		"message" : "The applicationKeyId and/or the applicationKey are wrong."
+	}`
+	client := NewClient(&testutil.FakeHTTPClient{
+		Response: testutil.HTTPResponse(http.StatusUnauthorized, body),
 	})
 
 	// the HTTP method here is irrevelant because the authentication call will
@@ -136,5 +87,5 @@ func TestClient_APIErrorsAreReportedToUser(t *testing.T) {
 	_, err := client.NewRequest(http.MethodGet, "foo", nil)
 
 	// test authorization error is reported to the user
-	assertContains(t, err.Error(), "The applicationKeyId and/or the applicationKey are wrong.")
+	testutil.AssertContains(t, err.Error(), "The applicationKeyId and/or the applicationKey are wrong.")
 }
