@@ -22,24 +22,19 @@ type errorResponse struct {
 	Message string `json:"message"`
 }
 
-// HTTPClient interface can be satisfied by any http.Client
-type HTTPClient interface {
-	Do(req *http.Request) (*http.Response, error)
-}
-
 // Client manages communication with Backblaze API
 type Client struct {
 	// HTTP client used to communicate with the B2 API
-	client HTTPClient
+	client *http.Client
 
 	// User agent for client
-	UserAgent string
+	userAgent string
 
 	// Base URL for API requests
-	BaseURL *url.URL
+	baseURL *url.URL
 
-	// Authorization token used for API calls
-	Token string
+	// API authorization data
+	auth *Authorization
 
 	// The identifier for the account
 	AccountID string
@@ -48,23 +43,64 @@ type Client struct {
 	Bucket *BucketService
 }
 
-// NewClient returns a new Backblaze API client
-func NewClient(httpClient HTTPClient) *Client {
-	if httpClient == nil {
-		httpClient = http.DefaultClient
-	}
+// ClientOpt are options for New
+type ClientOpt func(*Client) error
 
+// NewClient returns a new Backblaze API client
+func NewClient(opts ...ClientOpt) (*Client, error) {
 	baseURL, _ := url.Parse(defaultBaseURL)
 
 	c := &Client{
-		client:    httpClient,
-		UserAgent: "b2/" + version.Version + " (+https://github.com/romantomjak/b2)",
-		BaseURL:   baseURL,
+		client:    http.DefaultClient,
+		baseURL:   baseURL,
+		userAgent: "b2/" + version.Version + " (+https://github.com/romantomjak/b2)",
 	}
+
+	for _, opt := range opts {
+		if err := opt(c); err != nil {
+			return nil, err
+		}
+	}
+
+	if c.auth == nil {
+		auth, err := c.authorize()
+		if err != nil {
+			return nil, fmt.Errorf("authorization: %v", err)
+		}
+		c.auth = auth
+	}
+
+	u, err := url.Parse(c.auth.APIURL)
+	if err != nil {
+		return nil, fmt.Errorf("authorization: %v", err)
+	}
+	c.baseURL = u
+
+	c.AccountID = c.auth.AccountID
 
 	c.Bucket = &BucketService{client: c}
 
-	return c
+	return c, nil
+}
+
+// SetBaseURL is a client option for setting the base URL
+func SetBaseURL(bu string) ClientOpt {
+	return func(c *Client) error {
+		u, err := url.Parse(bu)
+		if err != nil {
+			return err
+		}
+		c.baseURL = u
+		return nil
+	}
+}
+
+// SetAuthentication is a client option for setting authentication data
+func SetAuthentication(auth *Authorization) ClientOpt {
+	return func(c *Client) error {
+		c.auth = auth
+		return nil
+	}
 }
 
 // NewRequest creates an API request suitable for use with Client.Do
@@ -75,24 +111,12 @@ func NewClient(httpClient HTTPClient) *Client {
 // If specified, the value pointed to by body is JSON encoded and included in
 // as the request body.
 func (c *Client) NewRequest(method, path string, body interface{}) (*http.Request, error) {
-	if c.Token == "" {
-		account, err := c.authorizeAccount()
-		if err != nil {
-			return nil, fmt.Errorf("authorization: %v", err)
-		}
-
-		err = c.reconfigureClient(account)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	req, err := c.newRequest(method, path, body)
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header.Add("Authorization", c.Token)
+	req.Header.Add("Authorization", c.auth.AuthorizationToken)
 
 	return req, nil
 }
@@ -104,7 +128,7 @@ func (c *Client) newRequest(method, path string, body interface{}) (*http.Reques
 		return nil, err
 	}
 
-	u := c.BaseURL.ResolveReference(rel)
+	u := c.baseURL.ResolveReference(rel)
 
 	buf := new(bytes.Buffer)
 	if body != nil {
@@ -119,7 +143,7 @@ func (c *Client) newRequest(method, path string, body interface{}) (*http.Reques
 		return nil, err
 	}
 
-	req.Header.Add("User-Agent", c.UserAgent)
+	req.Header.Add("User-Agent", c.userAgent)
 
 	return req, nil
 }

@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 
 	"github.com/mitchellh/cli"
@@ -23,7 +22,11 @@ func Run(stdin io.Reader, stdout, stderr io.Writer, args []string) int {
 		ErrorWriter: stderr,
 	}
 
-	b2client := b2.NewClient(http.DefaultClient)
+	client, err := b2.NewClient()
+	if err != nil {
+		fmt.Fprintf(stderr, "Error: %s\n", err.Error())
+		return 1
+	}
 
 	c := cli.NewCLI("b2", version.Version)
 	c.Args = args
@@ -31,13 +34,13 @@ func Run(stdin io.Reader, stdout, stderr io.Writer, args []string) int {
 		"create": func() (cli.Command, error) {
 			return &command.CreateBucketCommand{
 				Ui:     ui,
-				Client: b2client,
+				Client: client,
 			}, nil
 		},
 		"list": func() (cli.Command, error) {
 			return &command.ListCommand{
 				Ui:     ui,
-				Client: b2client,
+				Client: client,
 			}, nil
 		},
 		"version": func() (cli.Command, error) {
@@ -50,7 +53,7 @@ func Run(stdin io.Reader, stdout, stderr io.Writer, args []string) int {
 
 	exitCode, err := c.Run()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error executing CLI: %s\n", err.Error())
+		fmt.Fprintf(stderr, "Error executing CLI: %s\n", err.Error())
 		return 1
 	}
 
