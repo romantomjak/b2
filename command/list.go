@@ -47,17 +47,7 @@ func (c *ListCommand) Run(args []string) int {
 
 	// List buckets
 	if numArgs == 0 {
-		cmd := &b2.BucketListRequest{
-			AccountID: c.Client.AccountID,
-		}
-		buckets, _, err := c.Client.Bucket.List(cmd)
-		if err != nil {
-			c.Ui.Error(fmt.Sprintf("Error: %v", err))
-			return 1
-		}
-		for _, bucket := range buckets {
-			c.Ui.Output(bucket.Name)
-		}
+		return c.listBuckets()
 	} else {
 		pathParts := strings.Split(args[0], "/")
 		bucketName := pathParts[0]
