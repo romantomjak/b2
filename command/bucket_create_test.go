@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/mitchellh/cli"
@@ -13,20 +12,11 @@ import (
 )
 
 func TestCreateBucketCommand_RequiresBucketName(t *testing.T) {
-	client, _ := b2.NewClient(b2.SetAuthentication(&b2.Authorization{
-		AbsoluteMinimumPartSize: 5000000,
-		AccountID:               "abc123",
-		Allowed: b2.TokenCapability{
-			BucketID:     "my-bucket",
-			BucketName:   "MY BUCKET",
-			Capabilities: []string{"listBuckets", "listFiles", "readFiles", "shareFiles", "writeFiles", "deleteFiles"},
-			NamePrefix:   "",
-		},
-		APIURL:              "https://api123.backblazeb2.com",
-		AuthorizationToken:  "4_0022623512fc8f80000000001_0186e431_d18d02_acct_tH7VW03boebOXayIc43-sxptpfA=",
-		DownloadURL:         "https://f123.backblazeb2.com",
-		RecommendedPartSize: 100000000,
-	}))
+	server, _ := testutil.NewServer()
+	defer server.Close()
+
+	client, _ := b2.NewClient(b2.SetBaseURL(server.URL))
+
 	ui := cli.NewMockUi()
 	cmd := &CreateBucketCommand{Ui: ui, Client: client}
 
@@ -38,20 +28,11 @@ func TestCreateBucketCommand_RequiresBucketName(t *testing.T) {
 }
 
 func TestCreateBucketCommand_RequiresValidBucketType(t *testing.T) {
-	client, _ := b2.NewClient(b2.SetAuthentication(&b2.Authorization{
-		AbsoluteMinimumPartSize: 5000000,
-		AccountID:               "abc123",
-		Allowed: b2.TokenCapability{
-			BucketID:     "my-bucket",
-			BucketName:   "MY BUCKET",
-			Capabilities: []string{"listBuckets", "listFiles", "readFiles", "shareFiles", "writeFiles", "deleteFiles"},
-			NamePrefix:   "",
-		},
-		APIURL:              "https://api123.backblazeb2.com",
-		AuthorizationToken:  "4_0022623512fc8f80000000001_0186e431_d18d02_acct_tH7VW03boebOXayIc43-sxptpfA=",
-		DownloadURL:         "https://f123.backblazeb2.com",
-		RecommendedPartSize: 100000000,
-	}))
+	server, _ := testutil.NewServer()
+	defer server.Close()
+
+	client, _ := b2.NewClient(b2.SetBaseURL(server.URL))
+
 	ui := cli.NewMockUi()
 	cmd := &CreateBucketCommand{Ui: ui, Client: client}
 
@@ -63,7 +44,9 @@ func TestCreateBucketCommand_RequiresValidBucketType(t *testing.T) {
 }
 
 func TestCreateBucketCommand_BucketCreateRequest(t *testing.T) {
-	mux := http.NewServeMux()
+	server, mux := testutil.NewServer()
+	defer server.Close()
+
 	mux.HandleFunc("/b2api/v2/b2_create_bucket", func(w http.ResponseWriter, r *http.Request) {
 		testutil.AssertHttpMethod(t, r.Method, "POST")
 
@@ -74,21 +57,8 @@ func TestCreateBucketCommand_BucketCreateRequest(t *testing.T) {
 		testutil.AssertEqual(t, got["bucketName"], "my-bucket")
 		testutil.AssertEqual(t, got["bucketType"], "allPrivate")
 	})
-	server := httptest.NewServer(mux)
-	client, _ := b2.NewClient(b2.SetAuthentication(&b2.Authorization{
-		AbsoluteMinimumPartSize: 5000000,
-		AccountID:               "abc123",
-		Allowed: b2.TokenCapability{
-			BucketID:     "my-bucket",
-			BucketName:   "MY BUCKET",
-			Capabilities: []string{"listBuckets", "listFiles", "readFiles", "shareFiles", "writeFiles", "deleteFiles"},
-			NamePrefix:   "",
-		},
-		APIURL:              server.URL,
-		AuthorizationToken:  "4_0022623512fc8f80000000001_0186e431_d18d02_acct_tH7VW03boebOXayIc43-sxptpfA=",
-		DownloadURL:         "https://f123.backblazeb2.com",
-		RecommendedPartSize: 100000000,
-	}))
+
+	client, _ := b2.NewClient(b2.SetBaseURL(server.URL))
 
 	ui := cli.NewMockUi()
 	cmd := &CreateBucketCommand{Ui: ui, Client: client}
@@ -97,7 +67,9 @@ func TestCreateBucketCommand_BucketCreateRequest(t *testing.T) {
 }
 
 func TestCreateBucketCommand_PrintsCreatedBucketID(t *testing.T) {
-	mux := http.NewServeMux()
+	server, mux := testutil.NewServer()
+	defer server.Close()
+
 	mux.HandleFunc("/b2api/v2/b2_create_bucket", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, `{
 			"accountId" : "010203040506",
@@ -108,21 +80,9 @@ func TestCreateBucketCommand_PrintsCreatedBucketID(t *testing.T) {
 			"lifecycleRules" : []
 		}`)
 	})
-	server := httptest.NewServer(mux)
-	client, _ := b2.NewClient(b2.SetAuthentication(&b2.Authorization{
-		AbsoluteMinimumPartSize: 5000000,
-		AccountID:               "abc123",
-		Allowed: b2.TokenCapability{
-			BucketID:     "my-bucket",
-			BucketName:   "MY BUCKET",
-			Capabilities: []string{"listBuckets", "listFiles", "readFiles", "shareFiles", "writeFiles", "deleteFiles"},
-			NamePrefix:   "",
-		},
-		APIURL:              server.URL,
-		AuthorizationToken:  "4_0022623512fc8f80000000001_0186e431_d18d02_acct_tH7VW03boebOXayIc43-sxptpfA=",
-		DownloadURL:         "https://f123.backblazeb2.com",
-		RecommendedPartSize: 100000000,
-	}))
+
+	client, _ := b2.NewClient(b2.SetBaseURL(server.URL))
+
 	ui := cli.NewMockUi()
 	cmd := &CreateBucketCommand{Ui: ui, Client: client}
 

@@ -11,26 +11,9 @@ import (
 )
 
 func TestClient_Authorization(t *testing.T) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/b2api/v2/b2_authorize_account", func(w http.ResponseWriter, r *http.Request) {
-		testutil.AssertHttpMethod(t, r.Method, "GET")
+	server, _ := testutil.NewServer()
+	defer server.Close()
 
-		fmt.Fprint(w, `{
-			"absoluteMinimumPartSize": 5000000,
-			"accountId": "abc123",
-			"allowed": {
-			  "bucketId": "my-bucket",
-			  "bucketName": "MY BUCKET",
-			  "capabilities": ["listBuckets","listFiles","readFiles","shareFiles","writeFiles","deleteFiles"],
-			  "namePrefix": null
-			},
-			"apiUrl": "https://api123.backblazeb2.com",
-			"authorizationToken": "4_0022623512fc8f80000000001_0186e431_d18d02_acct_tH7VW03boebOXayIc43-sxptpfA=",
-			"downloadUrl": "https://f123.backblazeb2.com",
-			"recommendedPartSize": 100000000
-		}`)
-	})
-	server := httptest.NewServer(mux)
 	client, err := NewClient(SetBaseURL(server.URL))
 
 	testutil.AssertNil(t, err)
@@ -38,27 +21,18 @@ func TestClient_Authorization(t *testing.T) {
 }
 
 func TestClient_NewRequestDefauls(t *testing.T) {
-	client, _ := NewClient(SetAuthentication(&Authorization{
-		AbsoluteMinimumPartSize: 5000000,
-		AccountID:               "abc123",
-		Allowed: TokenCapability{
-			BucketID:     "my-bucket",
-			BucketName:   "MY BUCKET",
-			Capabilities: []string{"listBuckets", "listFiles", "readFiles", "shareFiles", "writeFiles", "deleteFiles"},
-			NamePrefix:   "",
-		},
-		APIURL:              "https://api123.backblazeb2.com",
-		AuthorizationToken:  "4_0022623512fc8f80000000001_0186e431_d18d02_acct_tH7VW03boebOXayIc43-sxptpfA=",
-		DownloadURL:         "https://f123.backblazeb2.com",
-		RecommendedPartSize: 100000000,
-	}))
+	server, _ := testutil.NewServer()
+	defer server.Close()
+
+	client, _ := NewClient(SetBaseURL(server.URL))
 
 	inBody := map[string]string{"foo": "bar", "hello": "world"}
 	outBody := `{"foo":"bar","hello":"world"}` + "\n"
 	req, _ := client.NewRequest(http.MethodPost, "foo", inBody)
 
 	// test relative URL was expanded
-	testutil.AssertEqual(t, req.URL.String(), "https://api123.backblazeb2.com/foo")
+	absURL := fmt.Sprintf("%s/%s", server.URL, "foo")
+	testutil.AssertEqual(t, req.URL.String(), absURL)
 
 	// test default user-agent is attached to the request
 	userAgent := req.Header.Get("User-Agent")
