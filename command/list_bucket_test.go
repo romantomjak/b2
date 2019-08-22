@@ -84,7 +84,7 @@ func TestListCommand_LookupBucketByName(t *testing.T) {
 			testutil.AssertEqual(t, code, 1)
 
 			out := ui.ErrorWriter.String()
-			testutil.AssertContains(t, out, `Bucket with name "bucket-name" was not found.`)
+			testutil.AssertContains(t, out, `bucket with name "bucket-name" was not found`)
 
 			ui.ErrorWriter.Reset()
 		})

@@ -11,21 +11,12 @@ func (c *ListCommand) listFiles(path string) int {
 	pathParts := strings.Split(path, "/")
 	bucketName := pathParts[0]
 
-	cmd := &b2.BucketListRequest{
-		AccountID: c.Client.AccountID,
-		Name:      bucketName,
-	}
-	buckets, _, err := c.Client.Bucket.List(cmd)
+	bucket, err := c.findBucketByName(bucketName)
 	if err != nil {
 		c.Ui.Error(fmt.Sprintf("Error: %v", err))
 		return 1
 	}
-	if len(buckets) == 0 {
-		c.Ui.Error(fmt.Sprintf("Bucket with name %q was not found.", bucketName))
-		return 1
-	}
 
-	bucket := buckets[0]
 	cmd2 := &b2.FileListRequest{
 		BucketID: bucket.ID,
 	}
@@ -39,4 +30,22 @@ func (c *ListCommand) listFiles(path string) int {
 	}
 
 	return 0
+}
+
+func (c *ListCommand) findBucketByName(name string) (*b2.Bucket, error) {
+	req := &b2.BucketListRequest{
+		AccountID: c.Client.AccountID,
+		Name:      name,
+	}
+
+	buckets, _, err := c.Client.Bucket.List(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(buckets) == 0 {
+		return nil, fmt.Errorf("bucket with name %q was not found", name)
+	}
+
+	return &buckets[0], nil
 }
