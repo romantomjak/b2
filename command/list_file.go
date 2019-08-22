@@ -8,8 +8,13 @@ import (
 )
 
 func (c *ListCommand) listFiles(path string) int {
-	pathParts := strings.Split(path, "/")
+	pathParts := strings.SplitN(path, "/", 2)
 	bucketName := pathParts[0]
+	filePrefix := ""
+
+	if len(pathParts) > 1 {
+		filePrefix = pathParts[1]
+	}
 
 	bucket, err := c.findBucketByName(bucketName)
 	if err != nil {
@@ -17,16 +22,20 @@ func (c *ListCommand) listFiles(path string) int {
 		return 1
 	}
 
-	cmd2 := &b2.FileListRequest{
-		BucketID: bucket.ID,
+	req := &b2.FileListRequest{
+		BucketID:  bucket.ID,
+		Prefix:    filePrefix,
+		Delimiter: "/",
 	}
-	files, _, err := c.Client.File.List(cmd2)
+
+	files, _, err := c.Client.File.List(req)
 	if err != nil {
 		c.Ui.Error(fmt.Sprintf("Error: %v", err))
 		return 1
 	}
+
 	for _, file := range files {
-		c.Ui.Output(fmt.Sprintf("%s/%s", bucket.Name, file.FileName))
+		c.Ui.Output(file.FileName)
 	}
 
 	return 0
