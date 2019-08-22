@@ -22,7 +22,7 @@ type File struct {
 	UploadTimestamp int64             `json:"uploadTimestamp"`
 }
 
-// FileListRequest represents a request to create a Bucket
+// FileListRequest represents a request to list files in a Bucket
 type FileListRequest struct {
 	BucketID      string `json:"bucketId"`
 	StartFileName string `json:"startFileName,omitempty"`
@@ -42,7 +42,7 @@ type FileService struct {
 	client *Client
 }
 
-// List all files in a Bucket
+// List files in a Bucket
 func (s *FileService) List(listRequest *FileListRequest) ([]File, *http.Response, error) {
 	req, err := s.client.NewRequest(http.MethodPost, listFilesURL, listRequest)
 	if err != nil {
