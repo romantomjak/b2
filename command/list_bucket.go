@@ -18,7 +18,7 @@ func (c *ListCommand) listBuckets() int {
 	}
 
 	for _, bucket := range buckets {
-		c.Ui.Output(bucket.Name)
+		c.Ui.Output(bucket.Name + "/")
 	}
 
 	return 0

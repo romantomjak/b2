@@ -53,9 +53,9 @@ func TestListCommand_CanListBuckets(t *testing.T) {
 	testutil.AssertEqual(t, code, 0)
 
 	out := ui.OutputWriter.String()
-	testutil.AssertContains(t, out, "Kitten-Videos")
-	testutil.AssertContains(t, out, "Puppy-Videos")
-	testutil.AssertContains(t, out, "Vacation-Pictures")
+	testutil.AssertContains(t, out, "Kitten-Videos/")
+	testutil.AssertContains(t, out, "Puppy-Videos/")
+	testutil.AssertContains(t, out, "Vacation-Pictures/")
 }
 
 func TestListCommand_LookupBucketByName(t *testing.T) {
