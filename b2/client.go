@@ -41,6 +41,7 @@ type Client struct {
 
 	// Services used for communicating with the API
 	Bucket *BucketService
+	File   *FileService
 }
 
 // ClientOpt are options for New
@@ -70,6 +71,7 @@ func NewClient(opts ...ClientOpt) (*Client, error) {
 	c.AccountID = c.auth.AccountID
 
 	c.Bucket = &BucketService{client: c}
+	c.File = &FileService{client: c}
 
 	return c, nil
 }
