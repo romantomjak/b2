@@ -9,19 +9,19 @@ const (
 	authorizationURL = "b2api/v2/b2_authorize_account"
 )
 
-// TokenCapability represents the capabilities of a token
-type TokenCapability struct {
+// tokenCapability represents the capabilities of a token
+type tokenCapability struct {
 	BucketID     string   `json:"bucketId"`
 	BucketName   string   `json:"bucketName"`
 	Capabilities []string `json:"capabilities"`
 	NamePrefix   string   `json:"namePrefix"`
 }
 
-// Authorization represents the authorization response from the B2 API
-type Authorization struct {
+// authorization represents the authorization response from the B2 API
+type authorization struct {
 	AbsoluteMinimumPartSize int             `json:"absoluteMinimumPartSize"`
 	AccountID               string          `json:"accountId"`
-	Allowed                 TokenCapability `json:"allowed"`
+	Allowed                 tokenCapability `json:"allowed"`
 	APIURL                  string          `json:"apiUrl"`
 	AuthorizationToken      string          `json:"authorizationToken"`
 	DownloadURL             string          `json:"downloadUrl"`
@@ -32,7 +32,7 @@ type Authorization struct {
 //
 // Authorization API call returns a token and a URL that should be used as
 // the base URL for subsequent API calls
-func (c *Client) authorize() (*Authorization, error) {
+func (c *Client) authorize() (*authorization, error) {
 	req, err := c.newRequest(http.MethodGet, authorizationURL, nil)
 	if err != nil {
 		return nil, err
@@ -40,7 +40,7 @@ func (c *Client) authorize() (*Authorization, error) {
 
 	req.SetBasicAuth(os.Getenv("B2_KEY_ID"), os.Getenv("B2_KEY_SECRET"))
 
-	auth := new(Authorization)
+	auth := new(authorization)
 	_, err = c.Do(req, &auth)
 	if err != nil {
 		return nil, err

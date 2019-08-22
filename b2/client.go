@@ -34,7 +34,7 @@ type Client struct {
 	baseURL *url.URL
 
 	// API authorization data
-	auth *Authorization
+	auth *authorization
 
 	// The identifier for the account
 	AccountID string
@@ -91,14 +91,6 @@ func SetBaseURL(bu string) ClientOpt {
 			return err
 		}
 		c.baseURL = u
-		return nil
-	}
-}
-
-// SetAuthentication is a client option for setting authentication data
-func SetAuthentication(auth *Authorization) ClientOpt {
-	return func(c *Client) error {
-		c.auth = auth
 		return nil
 	}
 }
