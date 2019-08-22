@@ -46,16 +46,35 @@ func (c *ListCommand) Run(args []string) int {
 	}
 
 	// List buckets
-	cmd := &b2.BucketListRequest{
-		AccountID: c.Client.AccountID,
-	}
-	buckets, _, err := c.Client.Bucket.List(cmd)
-	if err != nil {
-		c.Ui.Error(fmt.Sprintf("Error: %v", err))
-		return 1
-	}
-	for _, bucket := range buckets {
-		c.Ui.Output(bucket.Name)
+	if numArgs == 0 {
+		cmd := &b2.BucketListRequest{
+			AccountID: c.Client.AccountID,
+		}
+		buckets, _, err := c.Client.Bucket.List(cmd)
+		if err != nil {
+			c.Ui.Error(fmt.Sprintf("Error: %v", err))
+			return 1
+		}
+		for _, bucket := range buckets {
+			c.Ui.Output(bucket.Name)
+		}
+	} else {
+		pathParts := strings.Split(args[0], "/")
+		bucketName := pathParts[0]
+
+		cmd := &b2.BucketListRequest{
+			AccountID: c.Client.AccountID,
+			Name:      bucketName,
+		}
+		buckets, _, err := c.Client.Bucket.List(cmd)
+		if err != nil {
+			c.Ui.Error(fmt.Sprintf("Error: %v", err))
+			return 1
+		}
+		if len(buckets) == 0 {
+			c.Ui.Error(fmt.Sprintf("Bucket with name %q was not found.", bucketName))
+			return 1
+		}
 	}
 
 	return 0
