@@ -2,6 +2,7 @@ package b2
 
 import (
 	"net/http"
+	"net/url"
 	"os"
 )
 
@@ -32,10 +33,10 @@ type authorization struct {
 //
 // Authorization API call returns a token and a URL that should be used as
 // the base URL for subsequent API calls
-func (c *Client) authorize() (*authorization, error) {
+func (c *Client) authorize() error {
 	req, err := c.newRequest(http.MethodGet, authorizationURL, nil)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	req.SetBasicAuth(os.Getenv("B2_KEY_ID"), os.Getenv("B2_KEY_SECRET"))
@@ -43,8 +44,16 @@ func (c *Client) authorize() (*authorization, error) {
 	auth := new(authorization)
 	_, err = c.Do(req, &auth)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return auth, nil
+	u, err := url.Parse(auth.APIURL)
+	if err != nil {
+		return err
+	}
+
+	c.auth = auth
+	c.baseURL = u
+
+	return nil
 }

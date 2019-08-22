@@ -62,19 +62,10 @@ func NewClient(opts ...ClientOpt) (*Client, error) {
 		}
 	}
 
-	if c.auth == nil {
-		auth, err := c.authorize()
-		if err != nil {
-			return nil, fmt.Errorf("authorization: %v", err)
-		}
-		c.auth = auth
-	}
-
-	u, err := url.Parse(c.auth.APIURL)
+	err := c.authorize()
 	if err != nil {
 		return nil, fmt.Errorf("authorization: %v", err)
 	}
-	c.baseURL = u
 
 	c.AccountID = c.auth.AccountID
 
