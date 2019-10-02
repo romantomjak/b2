@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -138,7 +139,9 @@ func (c *Client) newRequest(method, path string, body interface{}) (*http.Reques
 
 // Do sends an API request and returns the API response
 //
-// The API response is JSON decoded and stored in the value pointed to by v
+// The API response is JSON decoded and stored in the value pointed to by v.
+// If v implements the io.Writer interface, the raw response will be written
+// to v, without attempting to decode it.
 func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 	resp, err := c.client.Do(req)
 	if err != nil {
@@ -152,9 +155,16 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 	}
 
 	if v != nil {
-		err := json.NewDecoder(resp.Body).Decode(v)
-		if err != nil {
-			return nil, err
+		if w, ok := v.(io.Writer); ok {
+			_, err = io.Copy(w, resp.Body)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			err := json.NewDecoder(resp.Body).Decode(v)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
