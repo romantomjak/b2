@@ -23,14 +23,19 @@ $ b2 create my-globally-unique-bucket-name
 Bucket "my-globally-unique-bucket-name" created with ID "123b2bucketid8"
 ```
 
-## TODO
+## Progress
 
-First I'll be focusing on creating Buckets. This is the progress so far:
+My initial goal is to be able to navigate B2 buckets, list files in them and, of course, to upload and download files. All the other features, performance optimizations and nice to haves will come after.
+
+This is how far I've gotten:
 
 - [x] Create a new bucket
 - [ ] Delete bucket
 - [x] List all buckets
 - [ ] Update settings for a bucket
+- [x] List files in a bucket
+- [ ] Upload a file
+- [ ] Download a file
 
 ## Contributing
 
