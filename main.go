@@ -43,6 +43,12 @@ func Run(stdin io.Reader, stdout, stderr io.Writer, args []string) int {
 				Client: client,
 			}, nil
 		},
+		"get": func() (cli.Command, error) {
+			return &command.GetCommand{
+				Ui:     ui,
+				Client: client,
+			}, nil
+		},
 		"version": func() (cli.Command, error) {
 			return &command.VersionCommand{
 				Ui:      ui,
