@@ -8,7 +8,7 @@ Backblaze B2 Cloud Storage Command Line Client
 
 This project is in development phase. I highly recommend you to use b2 with go modules.
 
-## Install
+## Installation
 
 ```sh
 go get -u github.com/romantomjak/b2
@@ -21,6 +21,19 @@ $ export B2_KEY_ID=1234
 $ export B2_KEY_SECRET=MYSECRET
 $ b2 create my-globally-unique-bucket-name
 Bucket "my-globally-unique-bucket-name" created with ID "123b2bucketid8"
+```
+
+## CLI example
+
+```sh
+$ b2 
+Usage: b2 [--version] [--help] <command> [<args>]
+
+Available commands are:
+    create     Create a new bucket
+    get        Download files
+    list       List files and buckets
+    version    Prints the B2 version
 ```
 
 ## Progress
