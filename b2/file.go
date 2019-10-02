@@ -1,6 +1,7 @@
 package b2
 
 import (
+	"io"
 	"net/http"
 )
 
@@ -56,4 +57,19 @@ func (s *FileService) List(listRequest *FileListRequest) ([]File, *http.Response
 	}
 
 	return root.Files, resp, err
+}
+
+// Download a file
+func (s *FileService) Download(url string, w io.Writer) (*http.Response, error) {
+	req, err := s.client.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := s.client.Do(req, w)
+	if err != nil {
+		return resp, err
+	}
+
+	return resp, err
 }
