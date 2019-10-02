@@ -27,11 +27,11 @@ func NewServer() (*httptest.Server, *http.ServeMux) {
 		},
 		"apiUrl": "%s",
 		"authorizationToken": "4_0022623512fc8f80000000001_0186e431_d18d02_acct_tH7VW03boebOXayIc43-sxptpfA=",
-		"downloadUrl": "https://f123.backblazeb2.com",
+		"downloadUrl": "%s",
 		"recommendedPartSize": 100000000
 	}`
 	mux.HandleFunc("/b2api/v2/b2_authorize_account", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, authJSON, server.URL)
+		fmt.Fprintf(w, authJSON, server.URL, server.URL)
 	})
 	return server, mux
 }
