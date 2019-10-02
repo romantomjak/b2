@@ -35,7 +35,7 @@ This is how far I've gotten:
 - [ ] Update settings for a bucket
 - [x] List files in a bucket
 - [ ] Upload a file
-- [ ] Download a file
+- [x] Download a file
 
 ## Contributing
 
