@@ -47,13 +47,19 @@ func (c *Client) authorize() error {
 		return err
 	}
 
-	u, err := url.Parse(auth.APIURL)
+	apiURL, err := url.Parse(auth.APIURL)
+	if err != nil {
+		return err
+	}
+
+	downloadURL, err := url.Parse(auth.DownloadURL)
 	if err != nil {
 		return err
 	}
 
 	c.auth = auth
-	c.baseURL = u
+	c.baseURL = apiURL
+	c.DownloadURL = downloadURL
 
 	return nil
 }

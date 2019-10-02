@@ -39,6 +39,9 @@ type Client struct {
 	// The identifier for the account
 	AccountID string
 
+	// The base URL for downloading files
+	DownloadURL *url.URL
+
 	// Services used for communicating with the API
 	Bucket *BucketService
 	File   *FileService
