@@ -149,9 +149,9 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 	}
 	defer resp.Body.Close()
 
-	err = c.checkResponse(resp)
+	err = checkResponse(resp)
 	if err != nil {
-		return resp, fmt.Errorf("api: %v", err)
+		return nil, err
 	}
 
 	if v != nil {
@@ -175,7 +175,7 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 //
 // Any code other than 2xx is an error, and the response will contain a JSON
 // error structure indicating what went wrong
-func (c *Client) checkResponse(r *http.Response) error {
+func checkResponse(r *http.Response) error {
 	if r.StatusCode >= 200 && r.StatusCode <= 299 {
 		return nil
 	}
@@ -193,5 +193,10 @@ func (c *Client) checkResponse(r *http.Response) error {
 	if err != nil {
 		errResp.Message = string(data)
 	}
+
+	if r.StatusCode == 401 && errResp.Code == "expired_auth_token" {
+		return ErrExpiredToken
+	}
+
 	return fmt.Errorf("%v %v: %v %v", r.Request.Method, r.Request.URL, errResp.Code, errResp.Message)
 }
