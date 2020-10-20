@@ -18,7 +18,13 @@ func (c *ListCommand) listFiles(path string) int {
 
 	bucket, err := c.findBucketByName(bucketName)
 	if err != nil {
-		c.Ui.Error(fmt.Sprintf("Error: %v", err))
+		c.ui.Error(fmt.Sprintf("Error: %v", err))
+		return 1
+	}
+
+	client, err := c.Client()
+	if err != nil {
+		c.ui.Error(fmt.Sprintf("Error: %v", err))
 		return 1
 	}
 
@@ -28,26 +34,32 @@ func (c *ListCommand) listFiles(path string) int {
 		Delimiter: "/",
 	}
 
-	files, _, err := c.Client.File.List(req)
+	files, _, err := client.File.List(req)
 	if err != nil {
-		c.Ui.Error(fmt.Sprintf("Error: %v", err))
+		c.ui.Error(fmt.Sprintf("Error: %v", err))
 		return 1
 	}
 
 	for _, file := range files {
-		c.Ui.Output(file.FileName)
+		c.ui.Output(file.FileName)
 	}
 
 	return 0
 }
 
 func (c *ListCommand) findBucketByName(name string) (*b2.Bucket, error) {
+	client, err := c.Client()
+	if err != nil {
+		c.ui.Error(fmt.Sprintf("Error: %v", err))
+		return nil, err
+	}
+
 	req := &b2.BucketListRequest{
-		AccountID: c.Client.AccountID,
+		AccountID: client.AccountID,
 		Name:      name,
 	}
 
-	buckets, _, err := c.Client.Bucket.List(req)
+	buckets, _, err := client.Bucket.List(req)
 	if err != nil {
 		return nil, err
 	}

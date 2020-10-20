@@ -1,16 +1,11 @@
 package command
 
 import (
-	"flag"
 	"strings"
-
-	"github.com/mitchellh/cli"
-	"github.com/romantomjak/b2/b2"
 )
 
 type ListCommand struct {
-	Ui     cli.Ui
-	Client *b2.Client
+	*baseCommand
 }
 
 func (c *ListCommand) Help() string {
@@ -18,7 +13,10 @@ func (c *ListCommand) Help() string {
 Usage: b2 list [<path>]
 
   Lists files and buckets associated with an account.
-`
+
+General Options:
+
+  ` + c.generalOptions()
 	return strings.TrimSpace(helpText)
 }
 
@@ -29,8 +27,8 @@ func (c *ListCommand) Synopsis() string {
 func (c *ListCommand) Name() string { return "list" }
 
 func (c *ListCommand) Run(args []string) int {
-	flags := flag.NewFlagSet(c.Name(), flag.ContinueOnError)
-	flags.Usage = func() { c.Ui.Output(c.Help()) }
+	flags := c.flagSet()
+	flags.Usage = func() { c.ui.Output(c.Help()) }
 
 	if err := flags.Parse(args); err != nil {
 		return 1
@@ -40,7 +38,7 @@ func (c *ListCommand) Run(args []string) int {
 	args = flags.Args()
 	numArgs := len(args)
 	if numArgs > 1 {
-		c.Ui.Error("This command takes one argument: <path>")
+		c.ui.Error("This command takes one argument: <path>")
 		return 1
 	}
 

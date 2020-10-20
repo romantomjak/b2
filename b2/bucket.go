@@ -71,6 +71,8 @@ type BucketService struct {
 
 // Create a new Bucket
 func (s *BucketService) Create(createRequest *BucketCreateRequest) (*Bucket, *http.Response, error) {
+	// TODO: check authorization for creating buckets
+
 	req, err := s.client.NewRequest(http.MethodPost, createBucketURL, createRequest)
 	if err != nil {
 		return nil, nil, err

@@ -9,38 +9,47 @@ import (
 	"github.com/mitchellh/cli"
 	"github.com/romantomjak/b2/b2"
 	"github.com/romantomjak/b2/testutil"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCreateBucketCommand_RequiresBucketName(t *testing.T) {
 	server, _ := testutil.NewServer()
 	defer server.Close()
 
-	client, _ := b2.NewClient(b2.SetBaseURL(server.URL))
+	cache, _ := b2.NewInMemoryCache()
+
+	client, _ := b2.NewClient("key-id", "key-secret", b2.SetBaseURL(server.URL), b2.SetCache(cache))
 
 	ui := cli.NewMockUi()
-	cmd := &CreateBucketCommand{Ui: ui, Client: client}
+	cmd := &CreateBucketCommand{
+		baseCommand: &baseCommand{ui: ui, client: client},
+	}
 
 	code := cmd.Run([]string{})
-	testutil.AssertEqual(t, code, 1)
+	assert.Equal(t, 1, code)
 
 	out := ui.ErrorWriter.String()
-	testutil.AssertContains(t, out, "This command takes one argument: <bucket-name>")
+	assert.Contains(t, out, "This command takes one argument: <bucket-name>")
 }
 
 func TestCreateBucketCommand_RequiresValidBucketType(t *testing.T) {
 	server, _ := testutil.NewServer()
 	defer server.Close()
 
-	client, _ := b2.NewClient(b2.SetBaseURL(server.URL))
+	cache, _ := b2.NewInMemoryCache()
+
+	client, _ := b2.NewClient("key-id", "key-secret", b2.SetBaseURL(server.URL), b2.SetCache(cache))
 
 	ui := cli.NewMockUi()
-	cmd := &CreateBucketCommand{Ui: ui, Client: client}
+	cmd := &CreateBucketCommand{
+		baseCommand: &baseCommand{ui: ui, client: client},
+	}
 
 	code := cmd.Run([]string{"-type=foo", "my-bucket"})
-	testutil.AssertEqual(t, code, 1)
+	assert.Equal(t, 1, code)
 
 	out := ui.ErrorWriter.String()
-	testutil.AssertContains(t, out, `-type must be either "public" or "private"`)
+	assert.Contains(t, out, `-type must be either "public" or "private"`)
 }
 
 func TestCreateBucketCommand_BucketCreateRequest(t *testing.T) {
@@ -48,22 +57,29 @@ func TestCreateBucketCommand_BucketCreateRequest(t *testing.T) {
 	defer server.Close()
 
 	mux.HandleFunc("/b2api/v2/b2_create_bucket", func(w http.ResponseWriter, r *http.Request) {
-		testutil.AssertHttpMethod(t, r.Method, "POST")
+		assert.Equal(t, "POST", r.Method)
 
 		var got map[string]string
 		json.NewDecoder(r.Body).Decode(&got)
 
-		testutil.AssertEqual(t, got["accountId"], "abc123")
-		testutil.AssertEqual(t, got["bucketName"], "my-bucket")
-		testutil.AssertEqual(t, got["bucketType"], "allPrivate")
+		assert.Equal(t, "abc123", got["accountId"])
+		assert.Equal(t, "my-bucket", got["bucketName"])
+		assert.Equal(t, "allPrivate", got["bucketType"])
 	})
 
-	client, _ := b2.NewClient(b2.SetBaseURL(server.URL))
+	cache, _ := b2.NewInMemoryCache()
+
+	client, _ := b2.NewClient("key-id", "key-secret", b2.SetBaseURL(server.URL), b2.SetCache(cache))
 
 	ui := cli.NewMockUi()
-	cmd := &CreateBucketCommand{Ui: ui, Client: client}
+	cmd := &CreateBucketCommand{
+		baseCommand: &baseCommand{ui: ui, client: client},
+	}
 
-	cmd.Run([]string{"my-bucket"})
+	_ = cmd.Run([]string{"my-bucket"})
+	// return code is ignored on purpose here.
+	// fake b2_create_bucket handler is not writing the response, so
+	// the command will fail and return 1
 }
 
 func TestCreateBucketCommand_PrintsCreatedBucketID(t *testing.T) {
@@ -81,14 +97,18 @@ func TestCreateBucketCommand_PrintsCreatedBucketID(t *testing.T) {
 		}`)
 	})
 
-	client, _ := b2.NewClient(b2.SetBaseURL(server.URL))
+	cache, _ := b2.NewInMemoryCache()
+
+	client, _ := b2.NewClient("key-id", "key-secret", b2.SetBaseURL(server.URL), b2.SetCache(cache))
 
 	ui := cli.NewMockUi()
-	cmd := &CreateBucketCommand{Ui: ui, Client: client}
+	cmd := &CreateBucketCommand{
+		baseCommand: &baseCommand{ui: ui, client: client},
+	}
 
 	code := cmd.Run([]string{"my-bucket"})
-	testutil.AssertEqual(t, code, 0)
+	assert.Equal(t, 0, code)
 
 	out := ui.OutputWriter.String()
-	testutil.AssertContains(t, out, fmt.Sprintf("Bucket %q created with ID %q", "my-bucket", "4a48fe8875c6214145260818"))
+	assert.Contains(t, out, fmt.Sprintf("Bucket %q created with ID %q", "my-bucket", "4a48fe8875c6214145260818"))
 }

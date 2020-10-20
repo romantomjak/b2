@@ -1,17 +1,14 @@
 package command
 
 import (
-	"flag"
 	"fmt"
 	"strings"
 
-	"github.com/mitchellh/cli"
 	"github.com/romantomjak/b2/b2"
 )
 
 type CreateBucketCommand struct {
-	Ui     cli.Ui
-	Client *b2.Client
+	*baseCommand
 }
 
 func (c *CreateBucketCommand) Help() string {
@@ -40,8 +37,8 @@ func (c *CreateBucketCommand) Name() string { return "create" }
 func (c *CreateBucketCommand) Run(args []string) int {
 	var bucketType string
 
-	flags := flag.NewFlagSet(c.Name(), flag.ContinueOnError)
-	flags.Usage = func() { c.Ui.Output(c.Help()) }
+	flags := c.flagSet()
+	flags.Usage = func() { c.ui.Output(c.Help()) }
 	flags.StringVar(&bucketType, "type", "private", "Change bucket type")
 
 	if err := flags.Parse(args); err != nil {
@@ -51,30 +48,36 @@ func (c *CreateBucketCommand) Run(args []string) int {
 	// Check that we got only one argument
 	args = flags.Args()
 	if l := len(args); l != 1 {
-		c.Ui.Error("This command takes one argument: <bucket-name>")
+		c.ui.Error("This command takes one argument: <bucket-name>")
 		return 1
 	}
 
 	// Validate bucket type
 	if bucketType != "public" && bucketType != "private" {
-		c.Ui.Error(`-type must be either "public" or "private"`)
+		c.ui.Error(`-type must be either "public" or "private"`)
+		return 1
+	}
+
+	client, err := c.Client()
+	if err != nil {
+		c.ui.Error(fmt.Sprintf("Error: %v", err))
 		return 1
 	}
 
 	// Create the bucket
 	b := &b2.BucketCreateRequest{
-		AccountID: c.Client.AccountID,
+		AccountID: client.AccountID,
 		Name:      args[0],
 		Type:      "all" + strings.Title(bucketType),
 	}
 
-	bucket, _, err := c.Client.Bucket.Create(b)
+	bucket, _, err := client.Bucket.Create(b)
 	if err != nil {
-		c.Ui.Error(fmt.Sprintf("Error: %v", err))
+		c.ui.Error(fmt.Sprintf("Error: %v", err))
 		return 1
 	}
 
-	c.Ui.Output(fmt.Sprintf("Bucket %q created with ID %q", bucket.Name, bucket.ID))
+	c.ui.Output(fmt.Sprintf("Bucket %q created with ID %q", bucket.Name, bucket.ID))
 
 	return 0
 }

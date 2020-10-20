@@ -3,17 +3,32 @@ package b2
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
+	"time"
 
 	"github.com/romantomjak/b2/version"
 )
 
 const (
-	defaultBaseURL = "https://api.backblazeb2.com/"
+	defaultBaseURL   = "https://api.backblazeb2.com/"
+	authorizationURL = "b2api/v2/b2_authorize_account"
+)
+
+var (
+	// ErrExpiredToken is returned by the client when authorization token
+	// has expired. If returned, repeating the same request will acquire
+	// a new authorization token.
+	ErrExpiredToken = errors.New("expired auth token")
+
+	// timeNow is a mockable version of time.Now
+	timeNow = time.Now
 )
 
 // An errorResponse contains the error caused by an API request
@@ -21,6 +36,36 @@ type errorResponse struct {
 	Status  int    `json:"status"`
 	Code    string `json:"code"`
 	Message string `json:"message"`
+}
+
+// tokenCapability represents the capabilities of an authorization token
+type tokenCapability struct {
+	BucketID     string   `json:"bucketId"`
+	BucketName   string   `json:"bucketName"`
+	Capabilities []string `json:"capabilities"`
+	NamePrefix   string   `json:"namePrefix"`
+}
+
+// authorizationResponse is returned by the B2 API authorization call
+type authorizationResponse struct {
+	AbsoluteMinimumPartSize int             `json:"absoluteMinimumPartSize"`
+	AccountID               string          `json:"accountId"`
+	Allowed                 tokenCapability `json:"allowed"`
+	APIURL                  string          `json:"apiUrl"`
+	AuthorizationToken      string          `json:"authorizationToken"`
+	DownloadURL             string          `json:"downloadUrl"`
+	RecommendedPartSize     int             `json:"recommendedPartSize"`
+}
+
+type authorization struct {
+	authorizationResponse
+	TokenExpiresAt time.Time `json:"tokenExpiresAt"`
+}
+
+// Cache defines the interface for interacting with a cache
+type Cache interface {
+	Get(key string) (interface{}, error)
+	Set(key string, value interface{}) error
 }
 
 // Client manages communication with Backblaze API
@@ -37,7 +82,10 @@ type Client struct {
 	// API authorization data
 	auth *authorization
 
-	// The identifier for the account
+	// The client for accessing cache
+	cache Cache
+
+	// The account identifier
 	AccountID string
 
 	// The base URL for downloading files
@@ -52,7 +100,7 @@ type Client struct {
 type ClientOpt func(*Client) error
 
 // NewClient returns a new Backblaze API client
-func NewClient(opts ...ClientOpt) (*Client, error) {
+func NewClient(keyId, keySecret string, opts ...ClientOpt) (*Client, error) {
 	baseURL, _ := url.Parse(defaultBaseURL)
 
 	c := &Client{
@@ -67,12 +115,31 @@ func NewClient(opts ...ClientOpt) (*Client, error) {
 		}
 	}
 
-	err := c.authorize()
+	if c.cache == nil {
+		cache, err := newDiskCache()
+		if err != nil {
+			return nil, err
+		}
+		c.cache = cache
+	}
+
+	// attempts := 0
+	// for {
+	// 	attempts++
+	// 	authz, err := s.authorize(keyId, keySecret)
+	// 	if err != nil {
+	// 		if err == ErrExpiredToken && attempts < 2 {
+	// 			continue
+	// 		}
+	// 		return nil, err
+	// 	}
+	// 	return authz, nil
+	// }
+
+	err := c.authorize(keyId, keySecret)
 	if err != nil {
 		return nil, fmt.Errorf("authorization: %v", err)
 	}
-
-	c.AccountID = c.auth.AccountID
 
 	c.Bucket = &BucketService{client: c}
 	c.File = &FileService{client: c}
@@ -88,6 +155,14 @@ func SetBaseURL(bu string) ClientOpt {
 			return err
 		}
 		c.baseURL = u
+		return nil
+	}
+}
+
+// SetCache is a client option for changing cache client
+func SetCache(cache Cache) ClientOpt {
+	return func(c *Client) error {
+		c.cache = cache
 		return nil
 	}
 }
@@ -111,6 +186,8 @@ func (c *Client) NewRequest(method, path string, body interface{}) (*http.Reques
 }
 
 // newRequest prepares a new Request
+//
+// Creates a new request object without authorization data
 func (c *Client) newRequest(method, path string, body interface{}) (*http.Request, error) {
 	rel, err := url.Parse(path)
 	if err != nil {
@@ -171,6 +248,83 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 	return resp, err
 }
 
+// authorize is used to log in to the B2 API
+//
+// Authorization API call returns a token and a URL that should be used as
+// the base URL for subsequent API calls
+func (c *Client) authorize(keyId, keySecret string) error {
+	var auth *authorization
+
+	// use cached authorization or request a fresh token
+	auth, err := authorizationFromCache(c.cache)
+	if err != nil {
+		req, err := c.newRequest(http.MethodGet, authorizationURL, nil)
+		if err != nil {
+			return err
+		}
+
+		req.SetBasicAuth(keyId, keySecret)
+
+		authResp := new(authorizationResponse)
+		_, err = c.Do(req, &authResp)
+		if err != nil {
+			return err
+		}
+
+		auth = &authorization{
+			TokenExpiresAt:        timeNow().Add(time.Hour * 24),
+			authorizationResponse: *authResp,
+		}
+
+		cacheAuthorization(auth, c.cache)
+		if err != nil {
+			// TODO: write to log
+			fmt.Println(err)
+		}
+	}
+
+	apiURL, err := url.Parse(auth.APIURL)
+	if err != nil {
+		return err
+	}
+
+	downloadURL, err := url.Parse(auth.DownloadURL)
+	if err != nil {
+		return err
+	}
+
+	// TODO: synchronize access to c.auth
+
+	c.baseURL = apiURL
+	c.auth = auth
+	c.AccountID = auth.AccountID
+	c.DownloadURL = downloadURL
+
+	return nil
+}
+
+func authorizationFromCache(cache Cache) (*authorization, error) {
+	val, err := cache.Get("authorization")
+	if err != nil {
+		return nil, err
+	}
+
+	auth, ok := val.(authorization)
+	if !ok {
+		return nil, fmt.Errorf("cannot cast %T as authorization", val)
+	}
+
+	if timeNow().After(auth.TokenExpiresAt) {
+		return nil, ErrExpiredToken
+	}
+
+	return &auth, nil
+}
+
+func cacheAuthorization(auth *authorization, cache Cache) error {
+	return cache.Set("authorization", auth)
+}
+
 // checkResponse checks the API response for errors and returns them if present
 //
 // Any code other than 2xx is an error, and the response will contain a JSON
@@ -199,4 +353,26 @@ func checkResponse(r *http.Response) error {
 	}
 
 	return fmt.Errorf("%v %v: %v %v", r.Request.Method, r.Request.URL, errResp.Code, errResp.Message)
+}
+
+// newDiskCache creates and returns disk cache
+//
+// The directory used for caching is created if it doesn't exist already
+func newDiskCache() (*DiskCache, error) {
+	cacheDir, err := os.UserCacheDir()
+	if err != nil {
+		return nil, err
+	}
+
+	path := filepath.Join(cacheDir, "b2")
+
+	err = os.Mkdir(path, 0700)
+	if err != nil {
+		// ignore "already exists" error
+		if err != os.ErrExist {
+			return nil, err
+		}
+	}
+
+	return NewDiskCache(path)
 }

@@ -7,18 +7,24 @@ import (
 )
 
 func (c *ListCommand) listBuckets() int {
-	req := &b2.BucketListRequest{
-		AccountID: c.Client.AccountID,
+	client, err := c.Client()
+	if err != nil {
+		c.ui.Error(fmt.Sprintf("Error: %v", err))
+		return 1
 	}
 
-	buckets, _, err := c.Client.Bucket.List(req)
+	req := &b2.BucketListRequest{
+		AccountID: client.AccountID,
+	}
+
+	buckets, _, err := client.Bucket.List(req)
 	if err != nil {
-		c.Ui.Error(fmt.Sprintf("Error: %v", err))
+		c.ui.Error(fmt.Sprintf("Error: %v", err))
 		return 1
 	}
 
 	for _, bucket := range buckets {
-		c.Ui.Output(bucket.Name + "/")
+		c.ui.Output(bucket.Name + "/")
 	}
 
 	return 0

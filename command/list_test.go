@@ -6,19 +6,23 @@ import (
 	"github.com/mitchellh/cli"
 	"github.com/romantomjak/b2/b2"
 	"github.com/romantomjak/b2/testutil"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestListCommand_AcceptsPathArgument(t *testing.T) {
 	server, _ := testutil.NewServer()
 	defer server.Close()
 
-	client, _ := b2.NewClient(b2.SetBaseURL(server.URL))
+	client, _ := b2.NewClient("key-id", "key-secret", b2.SetBaseURL(server.URL))
+
 	ui := cli.NewMockUi()
-	cmd := &ListCommand{Ui: ui, Client: client}
+	cmd := &ListCommand{
+		baseCommand: &baseCommand{ui: ui, client: client},
+	}
 
 	code := cmd.Run([]string{"one", "two"})
-	testutil.AssertEqual(t, code, 1)
+	assert.Equal(t, 1, code)
 
 	out := ui.ErrorWriter.String()
-	testutil.AssertContains(t, out, "This command takes one argument: <path>")
+	assert.Contains(t, out, "This command takes one argument: <path>")
 }

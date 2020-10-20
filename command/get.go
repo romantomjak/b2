@@ -1,18 +1,13 @@
 package command
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"strings"
-
-	"github.com/mitchellh/cli"
-	"github.com/romantomjak/b2/b2"
 )
 
 type GetCommand struct {
-	Ui     cli.Ui
-	Client *b2.Client
+	*baseCommand
 }
 
 func (c *GetCommand) Help() string {
@@ -31,8 +26,8 @@ func (c *GetCommand) Synopsis() string {
 func (c *GetCommand) Name() string { return "get" }
 
 func (c *GetCommand) Run(args []string) int {
-	flags := flag.NewFlagSet(c.Name(), flag.ContinueOnError)
-	flags.Usage = func() { c.Ui.Output(c.Help()) }
+	flags := c.flagSet()
+	flags.Usage = func() { c.ui.Output(c.Help()) }
 
 	if err := flags.Parse(args); err != nil {
 		return 1
@@ -42,28 +37,34 @@ func (c *GetCommand) Run(args []string) int {
 	args = flags.Args()
 	numArgs := len(args)
 	if numArgs != 2 {
-		c.Ui.Error("This command takes two arguments: <source> and <destination>")
+		c.ui.Error("This command takes two arguments: <source> and <destination>")
 		return 1
 	}
 
 	// Create the destination file
 	out, err := os.Create(args[1])
 	if err != nil {
-		c.Ui.Error(err.Error())
+		c.ui.Error(err.Error())
 		return 1
 	}
 	defer out.Close()
 
-	// Write the data to file
-	uri := fmt.Sprintf("%s/file/%s", c.Client.DownloadURL, args[0])
-	_, err = c.Client.File.Download(uri, out)
+	client, err := c.Client()
 	if err != nil {
-		c.Ui.Error(err.Error())
+		c.ui.Error(fmt.Sprintf("Error: %v", err))
+		return 1
+	}
+
+	// Write the data to file
+	uri := fmt.Sprintf("%s/file/%s", client.DownloadURL, args[0])
+	_, err = client.File.Download(uri, out)
+	if err != nil {
+		c.ui.Error(err.Error())
 		os.Remove(out.Name())
 		return 1
 	}
 
-	c.Ui.Output(fmt.Sprintf("Downloaded %s to %s", args[0], args[1]))
+	c.ui.Output(fmt.Sprintf("Downloaded %s to %s", args[0], args[1]))
 
 	return 0
 }

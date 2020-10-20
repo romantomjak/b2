@@ -8,6 +8,7 @@ import (
 	"github.com/mitchellh/cli"
 	"github.com/romantomjak/b2/b2"
 	"github.com/romantomjak/b2/testutil"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestListCommand_ListFilesInBucket(t *testing.T) {
@@ -64,15 +65,19 @@ func TestListCommand_ListFilesInBucket(t *testing.T) {
 		}`)
 	})
 
-	client, _ := b2.NewClient(b2.SetBaseURL(server.URL))
+	cache, _ := b2.NewInMemoryCache()
+
+	client, _ := b2.NewClient("key-id", "key-secret", b2.SetBaseURL(server.URL), b2.SetCache(cache))
 
 	ui := cli.NewMockUi()
-	cmd := &ListCommand{Ui: ui, Client: client}
+	cmd := &ListCommand{
+		baseCommand: &baseCommand{ui: ui, client: client},
+	}
 
 	code := cmd.Run([]string{"my-bucket"})
-	testutil.AssertEqual(t, code, 0)
+	assert.Equal(t, 0, code)
 
 	out := ui.OutputWriter.String()
-	testutil.AssertContains(t, out, "testing.txt")
-	testutil.AssertContains(t, out, "testing2.txt")
+	assert.Contains(t, out, "testing.txt")
+	assert.Contains(t, out, "testing2.txt")
 }

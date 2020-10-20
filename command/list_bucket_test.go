@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/mitchellh/cli"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/romantomjak/b2/b2"
 	"github.com/romantomjak/b2/testutil"
 )
@@ -44,18 +46,22 @@ func TestListCommand_CanListBuckets(t *testing.T) {
 		}`)
 	})
 
-	client, _ := b2.NewClient(b2.SetBaseURL(server.URL))
+	cache, _ := b2.NewInMemoryCache()
+
+	client, _ := b2.NewClient("key-id", "key-secret", b2.SetBaseURL(server.URL), b2.SetCache(cache))
 
 	ui := cli.NewMockUi()
-	cmd := &ListCommand{Ui: ui, Client: client}
+	cmd := &ListCommand{
+		baseCommand: &baseCommand{ui: ui, client: client},
+	}
 
 	code := cmd.Run([]string{})
-	testutil.AssertEqual(t, code, 0)
+	assert.Equal(t, 0, code)
 
 	out := ui.OutputWriter.String()
-	testutil.AssertContains(t, out, "Kitten-Videos/")
-	testutil.AssertContains(t, out, "Puppy-Videos/")
-	testutil.AssertContains(t, out, "Vacation-Pictures/")
+	assert.Contains(t, out, "Kitten-Videos/")
+	assert.Contains(t, out, "Puppy-Videos/")
+	assert.Contains(t, out, "Vacation-Pictures/")
 }
 
 func TestListCommand_LookupBucketByName(t *testing.T) {
@@ -66,10 +72,14 @@ func TestListCommand_LookupBucketByName(t *testing.T) {
 		fmt.Fprint(w, `{"buckets": []}`)
 	})
 
-	client, _ := b2.NewClient(b2.SetBaseURL(server.URL))
+	cache, _ := b2.NewInMemoryCache()
+
+	client, _ := b2.NewClient("key-id", "key-secret", b2.SetBaseURL(server.URL), b2.SetCache(cache))
 
 	ui := cli.NewMockUi()
-	cmd := &ListCommand{Ui: ui, Client: client}
+	cmd := &ListCommand{
+		baseCommand: &baseCommand{ui: ui, client: client},
+	}
 
 	tc := []struct {
 		bucketName string
@@ -81,10 +91,10 @@ func TestListCommand_LookupBucketByName(t *testing.T) {
 	for _, tt := range tc {
 		t.Run(tt.bucketName, func(t *testing.T) {
 			code := cmd.Run([]string{tt.bucketName})
-			testutil.AssertEqual(t, code, 1)
+			assert.Equal(t, 1, code)
 
 			out := ui.ErrorWriter.String()
-			testutil.AssertContains(t, out, `bucket with name "bucket-name" was not found`)
+			assert.Contains(t, out, `bucket with name "bucket-name" was not found`)
 
 			ui.ErrorWriter.Reset()
 		})
