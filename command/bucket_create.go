@@ -19,12 +19,16 @@ Usage: b2 create [options] <bucket-name>
   Creates a new bucket belonging to the account used to create it. The name
   must be globally unique and there is a limit of 100 buckets per account.
 
-  Options:
+General Options:
 
-    -type
-      Either "public", meaning that files in this bucket can be downloaded by
-      anybody, or "private", meaning that you need an authorization token to
-      download the files.
+  ` + c.generalOptions() + `
+
+Create Options:
+
+  -type
+    Either "public", meaning that files in this bucket can be downloaded by
+    anybody, or "private", meaning that you need an authorization token to
+    download the files.
 `
 	return strings.TrimSpace(helpText)
 }

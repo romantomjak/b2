@@ -16,7 +16,10 @@ func (c *GetCommand) Help() string {
 Usage: b2 get <source> <destination>
 
   Downloads the given file to the destination.
-`
+
+General Options:
+
+  ` + c.generalOptions()
 	return strings.TrimSpace(helpText)
 }
 
