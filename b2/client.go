@@ -2,6 +2,7 @@ package b2
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -174,8 +175,8 @@ func SetCache(cache Cache) ClientOpt {
 //
 // If specified, the value pointed to by body is JSON encoded and included in
 // as the request body.
-func (c *Client) NewRequest(method, path string, body interface{}) (*http.Request, error) {
-	req, err := c.newRequest(method, path, body)
+func (c *Client) NewRequest(ctx context.Context, method, path string, body interface{}) (*http.Request, error) {
+	req, err := c.newRequest(ctx, method, path, body)
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +189,7 @@ func (c *Client) NewRequest(method, path string, body interface{}) (*http.Reques
 // newRequest prepares a new Request
 //
 // Creates a new request object without authorization data
-func (c *Client) newRequest(method, path string, body interface{}) (*http.Request, error) {
+func (c *Client) newRequest(ctx context.Context, method, path string, body interface{}) (*http.Request, error) {
 	rel, err := url.Parse(path)
 	if err != nil {
 		return nil, err
@@ -204,7 +205,7 @@ func (c *Client) newRequest(method, path string, body interface{}) (*http.Reques
 		}
 	}
 
-	req, err := http.NewRequest(method, u.String(), buf)
+	req, err := http.NewRequestWithContext(ctx, method, u.String(), buf)
 	if err != nil {
 		return nil, err
 	}
@@ -258,7 +259,9 @@ func (c *Client) authorize(keyId, keySecret string) error {
 	// use cached authorization or request a fresh token
 	auth, err := authorizationFromCache(c.cache)
 	if err != nil {
-		req, err := c.newRequest(http.MethodGet, authorizationURL, nil)
+		ctx := context.Background()
+
+		req, err := c.newRequest(ctx, http.MethodGet, authorizationURL, nil)
 		if err != nil {
 			return err
 		}

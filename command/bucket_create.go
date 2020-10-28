@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -71,7 +72,9 @@ func (c *CreateBucketCommand) Run(args []string) int {
 		Type:      "all" + strings.Title(bucketType),
 	}
 
-	bucket, _, err := client.Bucket.Create(b)
+	ctx := context.TODO()
+
+	bucket, _, err := client.Bucket.Create(ctx, b)
 	if err != nil {
 		c.ui.Error(fmt.Sprintf("Error: %v", err))
 		return 1

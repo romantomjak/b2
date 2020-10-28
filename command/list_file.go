@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -34,7 +35,9 @@ func (c *ListCommand) listFiles(path string) int {
 		Delimiter: "/",
 	}
 
-	files, _, err := client.File.List(req)
+	ctx := context.TODO()
+
+	files, _, err := client.File.List(ctx, req)
 	if err != nil {
 		c.ui.Error(fmt.Sprintf("Error: %v", err))
 		return 1
@@ -59,7 +62,9 @@ func (c *ListCommand) findBucketByName(name string) (*b2.Bucket, error) {
 		Name:      name,
 	}
 
-	buckets, _, err := client.Bucket.List(req)
+	ctx := context.TODO()
+
+	buckets, _, err := client.Bucket.List(ctx, req)
 	if err != nil {
 		return nil, err
 	}

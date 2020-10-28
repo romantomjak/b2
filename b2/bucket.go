@@ -1,6 +1,7 @@
 package b2
 
 import (
+	"context"
 	"net/http"
 )
 
@@ -70,10 +71,10 @@ type BucketService struct {
 }
 
 // Create a new Bucket
-func (s *BucketService) Create(createRequest *BucketCreateRequest) (*Bucket, *http.Response, error) {
+func (s *BucketService) Create(ctx context.Context, createRequest *BucketCreateRequest) (*Bucket, *http.Response, error) {
 	// TODO: check authorization for creating buckets
 
-	req, err := s.client.NewRequest(http.MethodPost, createBucketURL, createRequest)
+	req, err := s.client.NewRequest(ctx, http.MethodPost, createBucketURL, createRequest)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -88,8 +89,8 @@ func (s *BucketService) Create(createRequest *BucketCreateRequest) (*Bucket, *ht
 }
 
 // List all Buckets
-func (s *BucketService) List(listRequest *BucketListRequest) ([]Bucket, *http.Response, error) {
-	req, err := s.client.NewRequest(http.MethodPost, listBucketsURL, listRequest)
+func (s *BucketService) List(ctx context.Context, listRequest *BucketListRequest) ([]Bucket, *http.Response, error) {
+	req, err := s.client.NewRequest(ctx, http.MethodPost, listBucketsURL, listRequest)
 	if err != nil {
 		return nil, nil, err
 	}

@@ -1,6 +1,7 @@
 package b2
 
 import (
+	"context"
 	"io"
 	"net/http"
 )
@@ -44,8 +45,8 @@ type FileService struct {
 }
 
 // List files in a Bucket
-func (s *FileService) List(listRequest *FileListRequest) ([]File, *http.Response, error) {
-	req, err := s.client.NewRequest(http.MethodPost, listFilesURL, listRequest)
+func (s *FileService) List(ctx context.Context, listRequest *FileListRequest) ([]File, *http.Response, error) {
+	req, err := s.client.NewRequest(ctx, http.MethodPost, listFilesURL, listRequest)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -60,8 +61,8 @@ func (s *FileService) List(listRequest *FileListRequest) ([]File, *http.Response
 }
 
 // Download a file
-func (s *FileService) Download(url string, w io.Writer) (*http.Response, error) {
-	req, err := s.client.NewRequest(http.MethodGet, url, nil)
+func (s *FileService) Download(ctx context.Context, url string, w io.Writer) (*http.Response, error) {
+	req, err := s.client.NewRequest(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}

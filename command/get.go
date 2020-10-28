@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -57,7 +58,10 @@ func (c *GetCommand) Run(args []string) int {
 
 	// Write the data to file
 	uri := fmt.Sprintf("%s/file/%s", client.DownloadURL, args[0])
-	_, err = client.File.Download(uri, out)
+
+	ctx := context.TODO()
+
+	_, err = client.File.Download(ctx, uri, out)
 	if err != nil {
 		c.ui.Error(err.Error())
 		os.Remove(out.Name())

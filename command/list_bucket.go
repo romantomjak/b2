@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/romantomjak/b2/b2"
@@ -17,7 +18,9 @@ func (c *ListCommand) listBuckets() int {
 		AccountID: client.AccountID,
 	}
 
-	buckets, _, err := client.Bucket.List(req)
+	ctx := context.TODO()
+
+	buckets, _, err := client.Bucket.List(ctx, req)
 	if err != nil {
 		c.ui.Error(fmt.Sprintf("Error: %v", err))
 		return 1

@@ -50,16 +50,6 @@ This is how far I've gotten:
 - [ ] Upload a file
 - [x] Download a file
 
-## TODO
-
-- add context to all operations - https://github.com/digitalocean/godo#examples
-
-## Authorization
-
-- have to get the account id in commands (also download url, api url, minimum part size, etc)
-- client must know how to re-try temporary authentication errors
-
-
 ## Contributing
 
 You can contribute in many ways and not just by changing the code! If you have any ideas, just open an issue and tell me what you think.

@@ -1,6 +1,7 @@
 package b2
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -77,7 +78,8 @@ func TestClient_NewRequestDefaults(t *testing.T) {
 
 	inBody := map[string]string{"foo": "bar", "hello": "world"}
 	outBody := `{"foo":"bar","hello":"world"}` + "\n"
-	req, _ := client.NewRequest(http.MethodPost, "foo", inBody)
+	ctx := context.TODO()
+	req, _ := client.NewRequest(ctx, http.MethodPost, "foo", inBody)
 
 	// test relative URL was expanded
 	absURL := fmt.Sprintf("%s/%s", server.URL, "foo")
