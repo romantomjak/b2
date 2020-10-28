@@ -33,7 +33,7 @@ Available commands are:
     create     Create a new bucket
     get        Download files
     list       List files and buckets
-    version    Prints the B2 version
+    version    Prints the client version
 ```
 
 ## Progress
