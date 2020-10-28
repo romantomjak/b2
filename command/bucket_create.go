@@ -28,7 +28,7 @@ Create Options:
   -type
     Either "public", meaning that files in this bucket can be downloaded by
     anybody, or "private", meaning that you need an authorization token to
-    download the files.
+    download the files. Defaults to "private".
 `
 	return strings.TrimSpace(helpText)
 }
