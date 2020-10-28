@@ -372,7 +372,7 @@ func newDiskCache() (*DiskCache, error) {
 	err = os.Mkdir(path, 0700)
 	if err != nil {
 		// ignore "already exists" error
-		if err != os.ErrExist {
+		if os.IsExist(err) == false {
 			return nil, err
 		}
 	}
