@@ -47,7 +47,8 @@ This is how far I've gotten:
 - [x] List all buckets
 - [ ] Update settings for a bucket
 - [x] List files in a bucket
-- [ ] Upload a file
+- [ ] Upload small files
+- [ ] Upload large files
 - [x] Download a file
 
 ## Contributing
