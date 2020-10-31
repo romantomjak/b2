@@ -10,9 +10,13 @@ This project is in development phase. You can try it with latest release version
 
 ## Installation
 
+Download and install using go get:
+
 ```sh
 go get -u github.com/romantomjak/b2
 ```
+
+or grab a binary from [releases](https://github.com/romantomjak/b2/releases/latest) section!
 
 ## Usage
 
@@ -33,6 +37,7 @@ Available commands are:
     create     Create a new bucket
     get        Download files
     list       List files and buckets
+    put        Upload files
     version    Prints the client version
 ```
 
@@ -47,7 +52,7 @@ This is how far I've gotten:
 - [x] List all buckets
 - [ ] Update settings for a bucket
 - [x] List files in a bucket
-- [ ] Upload small files
+- [x] Upload small files (<100 MB)
 - [ ] Upload large files
 - [x] Download a file
 

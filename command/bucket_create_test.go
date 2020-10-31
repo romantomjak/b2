@@ -77,6 +77,7 @@ func TestCreateBucketCommand_BucketCreateRequest(t *testing.T) {
 	}
 
 	_ = cmd.Run([]string{"my-bucket"})
+	// TODO: write bucket response
 	// return code is ignored on purpose here.
 	// fake b2_create_bucket handler is not writing the response, so
 	// the command will fail and return 1

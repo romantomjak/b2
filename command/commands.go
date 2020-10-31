@@ -27,6 +27,11 @@ func Commands(ui cli.Ui) map[string]cli.CommandFactory {
 				baseCommand: baseCommand,
 			}, nil
 		},
+		"put": func() (cli.Command, error) {
+			return &PutCommand{
+				baseCommand: baseCommand,
+			}, nil
+		},
 		"version": func() (cli.Command, error) {
 			return &VersionCommand{
 				baseCommand: baseCommand,

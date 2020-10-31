@@ -197,15 +197,21 @@ func (c *Client) newRequest(ctx context.Context, method, path string, body inter
 
 	u := c.baseURL.ResolveReference(rel)
 
-	buf := new(bytes.Buffer)
+	var b io.Reader
 	if body != nil {
-		err := json.NewEncoder(buf).Encode(body)
-		if err != nil {
-			return nil, err
+		if r, ok := body.(io.Reader); ok {
+			b = r
+		} else {
+			buf := new(bytes.Buffer)
+			err := json.NewEncoder(buf).Encode(body)
+			if err != nil {
+				return nil, err
+			}
+			b = buf
 		}
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, u.String(), buf)
+	req, err := http.NewRequestWithContext(ctx, method, u.String(), b)
 	if err != nil {
 		return nil, err
 	}
