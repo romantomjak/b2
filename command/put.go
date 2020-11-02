@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -57,14 +56,24 @@ func (c *PutCommand) Run(args []string) int {
 		return 1
 	}
 
-	// FIXME: remove when large file upload is implemented
-	err := checkMaxFileSize(args[0])
+	info, err := os.Stat(args[0])
 	if err != nil {
-		c.ui.Error("Large file upload is not yet implemented. Maximum file size is 100 MB")
+		c.ui.Error(fmt.Sprintf("Cannot determine file size for %s: %s", args[0], err))
 		return 1
 	}
 
-	return c.putSmallFile(args[0], args[1])
+	// Obtain a client
+	client, err := c.Client()
+	if err != nil {
+		c.ui.Error(fmt.Sprintf("Error: %v", err))
+		return 1
+	}
+
+	if info.Size() < client.RecommendedPartSize {
+		return c.putSmallFile(args[0], args[1])
+	}
+
+	return c.putLargeFile(args[0], args[1])
 }
 
 func (c *PutCommand) findBucketByName(name string) (*b2.Bucket, error) {
@@ -100,22 +109,6 @@ func fileExists(filename string) bool {
 		return false
 	}
 	return !info.IsDir()
-}
-
-// checkMaxFileSize checks that file is a "small" file
-func checkMaxFileSize(filename string) error {
-	var maxFileSize int64 = 100 << (10 * 2) // 100 mb
-
-	info, err := os.Stat(filename)
-	if err != nil {
-		return err
-	}
-
-	if info.Size() > maxFileSize {
-		return errors.New("file is too big")
-	}
-
-	return nil
 }
 
 // destinationBucketAndFilename returns upload bucket and filePrefix

@@ -9,19 +9,6 @@ import (
 )
 
 func (c *PutCommand) putSmallFile(source, destination string) int {
-	// Check that source file exists
-	if !fileExists(source) {
-		c.ui.Error(fmt.Sprintf("File does not exist: %s", source))
-		return 1
-	}
-
-	// FIXME: remove when large file upload is implemented
-	err := checkMaxFileSize(source)
-	if err != nil {
-		c.ui.Error("Large file upload is not yet implemented. Maximum file size is 100 MB")
-		return 1
-	}
-
 	bucketName, filePrefix := destinationBucketAndFilename(source, destination)
 
 	// TODO: caching bucket name:id mappings could save this request
