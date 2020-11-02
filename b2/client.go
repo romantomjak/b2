@@ -49,13 +49,13 @@ type tokenCapability struct {
 
 // authorizationResponse is returned by the B2 API authorization call
 type authorizationResponse struct {
-	AbsoluteMinimumPartSize int             `json:"absoluteMinimumPartSize"`
+	AbsoluteMinimumPartSize int64           `json:"absoluteMinimumPartSize"`
 	AccountID               string          `json:"accountId"`
 	Allowed                 tokenCapability `json:"allowed"`
 	APIURL                  string          `json:"apiUrl"`
 	AuthorizationToken      string          `json:"authorizationToken"`
 	DownloadURL             string          `json:"downloadUrl"`
-	RecommendedPartSize     int             `json:"recommendedPartSize"`
+	RecommendedPartSize     int64           `json:"recommendedPartSize"`
 }
 
 type authorization struct {
@@ -91,6 +91,9 @@ type Client struct {
 
 	// The base URL for downloading files
 	DownloadURL *url.URL
+
+	// The recommended size for each part of a large file
+	RecommendedPartSize int64
 
 	// Services used for communicating with the API
 	Bucket *BucketService
@@ -308,6 +311,7 @@ func (c *Client) authorize(keyId, keySecret string) error {
 	c.auth = auth
 	c.AccountID = auth.AccountID
 	c.DownloadURL = downloadURL
+	c.RecommendedPartSize = auth.RecommendedPartSize
 
 	return nil
 }
