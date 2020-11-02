@@ -64,43 +64,7 @@ func (c *PutCommand) Run(args []string) int {
 		return 1
 	}
 
-	bucketName, filePrefix := destinationBucketAndFilename(args[0], args[1])
-
-	// TODO: caching bucket name:id mappings could save this request
-	bucket, err := c.findBucketByName(bucketName)
-	if err != nil {
-		c.ui.Error(fmt.Sprintf("Error: %v", err))
-		return 1
-	}
-
-	// Create a client
-	client, err := c.Client()
-	if err != nil {
-		c.ui.Error(fmt.Sprintf("Error: %v", err))
-		return 1
-	}
-
-	// Request upload url
-	ctx := context.TODO()
-
-	uploadAuthReq := &b2.UploadAuthorizationRequest{
-		BucketID: bucket.ID,
-	}
-	uploadAuth, _, err := client.File.UploadAuthorization(ctx, uploadAuthReq)
-	if err != nil {
-		c.ui.Error(fmt.Sprintf("Error: %v", err))
-		return 1
-	}
-
-	_, _, err = client.File.Upload(ctx, uploadAuth, args[0], filePrefix)
-	if err != nil {
-		c.ui.Error(err.Error())
-		return 1
-	}
-
-	c.ui.Output(fmt.Sprintf("Uploaded %q to %q", args[0], path.Join(bucket.Name, filePrefix)))
-
-	return 0
+	return c.putSmallFile(args[0], args[1])
 }
 
 func (c *PutCommand) findBucketByName(name string) (*b2.Bucket, error) {
