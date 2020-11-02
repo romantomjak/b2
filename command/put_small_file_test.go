@@ -35,7 +35,7 @@ func TestPutCommand_FilePrefix(t *testing.T) {
 	}
 }
 
-func TestPutCommand_CanUploadFile(t *testing.T) {
+func TestPutCommand_CanUploadSmallFile(t *testing.T) {
 	server, mux := testutil.NewServer()
 	defer server.Close()
 
