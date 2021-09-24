@@ -58,7 +58,7 @@ func (c *PutCommand) Run(args []string) int {
 
 	info, err := os.Stat(args[0])
 	if err != nil {
-		c.ui.Error(fmt.Sprintf("Cannot determine file size for %s: %s", args[0], err))
+		c.ui.Error(fmt.Sprintf("Cannot estimate file size for %s: %s", args[0], err))
 		return 1
 	}
 
