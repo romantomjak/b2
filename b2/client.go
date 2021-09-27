@@ -28,6 +28,10 @@ var (
 	// a new authorization token.
 	ErrExpiredToken = errors.New("expired auth token")
 
+	// ErrUnauthorized is returned when the applicationKeyId and/or the
+	// applicationKey are wrong.
+	ErrUnauthorized = errors.New("invalid credentials")
+
 	// timeNow is a mockable version of time.Now
 	timeNow = time.Now
 )
@@ -382,11 +386,16 @@ func checkResponse(r *http.Response) error {
 		errResp.Message = string(data)
 	}
 
-	if r.StatusCode == 401 && errResp.Code == "expired_auth_token" {
-		return ErrExpiredToken
+	if r.StatusCode == 401 {
+		switch errResp.Code {
+		case "expired_auth_token":
+			return ErrExpiredToken
+		case "unauthorized":
+			return ErrUnauthorized
+		}
 	}
 
-	return fmt.Errorf("%v %v: %v %v", r.Request.Method, r.Request.URL, errResp.Code, errResp.Message)
+	return fmt.Errorf("%v %v %v %v: %v %v", r.Proto, r.StatusCode, r.Request.Method, r.Request.URL, errResp.Code, errResp.Message)
 }
 
 // newDiskCache creates and returns disk cache
