@@ -24,7 +24,7 @@ func TestClient_Authorization(t *testing.T) {
 	client, err := NewClient("key-id", "key-secret", SetBaseURL(server.URL), SetCache(cache))
 
 	assert.NoError(t, err)
-	assert.Equal(t, "abc123", client.AccountID)
+	assert.Equal(t, "abc123", client.Session.AccountID)
 }
 
 func TestClient_AuthorizationCache(t *testing.T) {

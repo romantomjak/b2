@@ -71,7 +71,7 @@ func (c *CreateBucketCommand) Run(args []string) int {
 
 	// Create the bucket
 	b := &b2.BucketCreateRequest{
-		AccountID: client.AccountID,
+		AccountID: client.Session.AccountID,
 		Name:      args[0],
 		Type:      "all" + strings.Title(bucketType),
 	}

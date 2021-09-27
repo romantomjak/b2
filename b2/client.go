@@ -49,18 +49,49 @@ type tokenCapability struct {
 
 // authorizationResponse is returned by the B2 API authorization call
 type authorizationResponse struct {
-	AbsoluteMinimumPartSize int             `json:"absoluteMinimumPartSize"`
-	AccountID               string          `json:"accountId"`
-	Allowed                 tokenCapability `json:"allowed"`
-	APIURL                  string          `json:"apiUrl"`
-	AuthorizationToken      string          `json:"authorizationToken"`
-	DownloadURL             string          `json:"downloadUrl"`
-	RecommendedPartSize     int             `json:"recommendedPartSize"`
+	// The smallest possible size of a part of a large
+	// file (except the last one).
+	MinimumPartSize int `json:"absoluteMinimumPartSize"`
+
+	// The identifier for the account
+	AccountID string `json:"accountId"`
+
+	// Contains information about what's allowed with this auth token.
+	TokenCapabilities tokenCapability `json:"allowed"`
+
+	// The base URL for all API calls except for uploading
+	// and downloading files.
+	APIURL string `json:"apiUrl"`
+
+	// The base URL for all API calls using the S3 compatible API.
+	S3APIURL string `json:"s3ApiUrl"`
+
+	// The token used for all API calls that need an
+	// authorization header. The token is valid for
+	// at most 24 hours.
+	AuthorizationToken string `json:"authorizationToken"`
+
+	// The base URL to use for downloading files.
+	DownloadURL string `json:"downloadUrl"`
+
+	// The recommended size for each part of a large file
+	// for optimal upload performance.
+	RecommendedPartSize int `json:"recommendedPartSize"`
 }
 
-type authorization struct {
+// Session holds the information obtained from the login call.
+//
+// The information returned is sufficient enough to interact
+// with the API directly if you wish so.
+type Session struct {
 	authorizationResponse
+
+	// Timestamp of when the token will become invalid
 	TokenExpiresAt time.Time `json:"tokenExpiresAt"`
+}
+
+func (s *Session) Expired() bool {
+	return timeNow().After(s.TokenExpiresAt)
 }
 
 // Cache defines the interface for interacting with a cache
@@ -80,17 +111,11 @@ type Client struct {
 	// Base URL for API requests
 	baseURL *url.URL
 
-	// API authorization data
-	auth *authorization
-
 	// The client for accessing cache
 	cache Cache
 
-	// The account identifier
-	AccountID string
-
-	// The base URL for downloading files
-	DownloadURL *url.URL
+	// The information obtained from the login call
+	Session *Session
 
 	// Services used for communicating with the API
 	Bucket *BucketService
@@ -137,9 +162,9 @@ func NewClient(keyId, keySecret string, opts ...ClientOpt) (*Client, error) {
 	// 	return authz, nil
 	// }
 
-	err := c.authorize(keyId, keySecret)
+	err := c.login(keyId, keySecret)
 	if err != nil {
-		return nil, fmt.Errorf("authorization: %v", err)
+		return nil, fmt.Errorf("login: %v", err)
 	}
 
 	c.Bucket = &BucketService{client: c}
@@ -181,7 +206,7 @@ func (c *Client) NewRequest(ctx context.Context, method, path string, body inter
 		return nil, err
 	}
 
-	req.Header.Add("Authorization", c.auth.AuthorizationToken)
+	req.Header.Add("Authorization", c.Session.AuthorizationToken)
 
 	return req, nil
 }
@@ -255,83 +280,83 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 	return resp, err
 }
 
-// authorize is used to log in to the B2 API
+// login is used to log in to the B2 API
 //
 // Authorization API call returns a token and a URL that should be used as
-// the base URL for subsequent API calls
-func (c *Client) authorize(keyId, keySecret string) error {
-	var auth *authorization
-
-	// use cached authorization or request a fresh token
-	auth, err := authorizationFromCache(c.cache)
+// the new base URL for subsequent API calls
+func (c *Client) login(keyId, keySecret string) error {
+	sess, err := restoreSessionFromCache(c.cache)
 	if err != nil {
-		ctx := context.Background()
+		return fmt.Errorf("cache: %v", err)
+	}
 
-		req, err := c.newRequest(ctx, http.MethodGet, authorizationURL, nil)
+	if sess == nil || sess.Expired() {
+		sess, err = c.newSession(keyId, keySecret)
 		if err != nil {
 			return err
 		}
-
-		req.SetBasicAuth(keyId, keySecret)
-
-		authResp := new(authorizationResponse)
-		_, err = c.Do(req, &authResp)
+		err = cacheAuthorization(c.cache, sess)
 		if err != nil {
-			return err
-		}
-
-		auth = &authorization{
-			TokenExpiresAt:        timeNow().Add(time.Hour * 24),
-			authorizationResponse: *authResp,
-		}
-
-		cacheAuthorization(auth, c.cache)
-		if err != nil {
-			// TODO: write to log
-			fmt.Println(err)
+			return fmt.Errorf("cache: %v", err)
 		}
 	}
 
-	apiURL, err := url.Parse(auth.APIURL)
+	c.Session = sess
+
+	// Set the new base URL
+	apiURL, err := url.Parse(sess.APIURL)
 	if err != nil {
 		return err
 	}
-
-	downloadURL, err := url.Parse(auth.DownloadURL)
-	if err != nil {
-		return err
-	}
-
-	// TODO: synchronize access to c.auth
-
 	c.baseURL = apiURL
-	c.auth = auth
-	c.AccountID = auth.AccountID
-	c.DownloadURL = downloadURL
 
 	return nil
 }
 
-func authorizationFromCache(cache Cache) (*authorization, error) {
-	val, err := cache.Get("authorization")
+func (c *Client) newSession(keyId, keySecret string) (*Session, error) {
+	ctx := context.Background()
+
+	req, err := c.newRequest(ctx, http.MethodGet, authorizationURL, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	auth, ok := val.(authorization)
-	if !ok {
-		return nil, fmt.Errorf("cannot cast %T as authorization", val)
+	req.SetBasicAuth(keyId, keySecret)
+
+	authResp := new(authorizationResponse)
+	_, err = c.Do(req, &authResp)
+	if err != nil {
+		return nil, err
 	}
 
-	if timeNow().After(auth.TokenExpiresAt) {
-		return nil, ErrExpiredToken
+	sess := &Session{
+		TokenExpiresAt:        timeNow().Add(time.Hour * 24),
+		authorizationResponse: *authResp,
 	}
 
-	return &auth, nil
+	return sess, nil
 }
 
-func cacheAuthorization(auth *authorization, cache Cache) error {
-	return cache.Set("authorization", auth)
+func restoreSessionFromCache(cache Cache) (*Session, error) {
+	val, err := cache.Get("session")
+	if err != nil {
+		return nil, err
+	}
+
+	if val == nil {
+		return nil, nil
+	}
+
+	sess, ok := val.(Session)
+	if !ok {
+		return nil, fmt.Errorf("cannot cast %T as session", val)
+	}
+
+	return &sess, nil
+}
+
+func cacheAuthorization(cache Cache, sess *Session) error {
+	return cache.Set("session", sess)
 }
 
 // checkResponse checks the API response for errors and returns them if present
