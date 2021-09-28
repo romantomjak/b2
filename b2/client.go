@@ -36,14 +36,14 @@ var (
 	timeNow = time.Now
 )
 
-// An errorResponse contains the error caused by an API request
+// An errorResponse contains the error caused by an API request.
 type errorResponse struct {
 	Status  int    `json:"status"`
 	Code    string `json:"code"`
 	Message string `json:"message"`
 }
 
-// tokenCapability represents the capabilities of an authorization token
+// tokenCapability represents the capabilities of an authorization token.
 type tokenCapability struct {
 	BucketID     string   `json:"bucketId"`
 	BucketName   string   `json:"bucketName"`
@@ -51,13 +51,13 @@ type tokenCapability struct {
 	NamePrefix   string   `json:"namePrefix"`
 }
 
-// authorizationResponse is returned by the B2 API authorization call
+// authorizationResponse is returned by the B2 API authorization call.
 type authorizationResponse struct {
 	// The smallest possible size of a part of a large
 	// file (except the last one).
 	MinimumPartSize int `json:"absoluteMinimumPartSize"`
 
-	// The identifier for the account
+	// The identifier for the account.
 	AccountID string `json:"accountId"`
 
 	// Contains information about what's allowed with this auth token.
@@ -85,8 +85,10 @@ type authorizationResponse struct {
 
 // Session holds the information obtained from the login call.
 //
-// The information returned is sufficient enough to interact
-// with the API directly if you wish so.
+// The information is sufficient enough to interact with the API
+// directly. Expired sessions can contain attributes with zero
+// values, so be sure to check whether the session has not expired
+// before using it.
 type Session struct {
 	authorizationResponse
 
@@ -94,11 +96,12 @@ type Session struct {
 	TokenExpiresAt time.Time `json:"tokenExpiresAt"`
 }
 
+// Expired returns whether the session has expired.
 func (s *Session) Expired() bool {
 	return timeNow().After(s.TokenExpiresAt)
 }
 
-// Cache defines the interface for interacting with a cache
+// Cache defines the interface for interacting with a cache.
 type Cache interface {
 	Get(key string) (interface{}, error)
 	Set(key string, value interface{}) error
@@ -109,16 +112,18 @@ type Client struct {
 	// HTTP client used to communicate with the B2 API
 	client *http.Client
 
-	// User agent for client
+	// User agent for the client
 	userAgent string
 
 	// Base URL for API requests
 	baseURL *url.URL
 
-	// The client for accessing cache
+	// Cache is used for caching authorization tokens for up to
+	// 24 hours as well as various other things such as bucket
+	// name to ID mappings required for many API calls
 	cache Cache
 
-	// The information obtained from the login call
+	// Session holds the information obtained from the login call
 	Session *Session
 
 	// Services used for communicating with the API
@@ -126,15 +131,16 @@ type Client struct {
 	File   *FileService
 }
 
-// ClientOpt are options for New
+// ClientOpt are options for New.
 type ClientOpt func(*Client) error
 
-// NewClient returns a new Backblaze API client
+// NewClient returns a new Backblaze API client.
 func NewClient(keyId, keySecret string, opts ...ClientOpt) (*Client, error) {
 	baseURL, _ := url.Parse(defaultBaseURL)
 
 	c := &Client{
 		client:    http.DefaultClient,
+		Session:   &Session{},
 		baseURL:   baseURL,
 		userAgent: "b2/" + version.Version + " (+https://github.com/romantomjak/b2)",
 	}
@@ -153,23 +159,29 @@ func NewClient(keyId, keySecret string, opts ...ClientOpt) (*Client, error) {
 		c.cache = cache
 	}
 
-	// attempts := 0
-	// for {
-	// 	attempts++
-	// 	authz, err := s.authorize(keyId, keySecret)
-	// 	if err != nil {
-	// 		if err == ErrExpiredToken && attempts < 2 {
-	// 			continue
-	// 		}
-	// 		return nil, err
-	// 	}
-	// 	return authz, nil
-	// }
-
-	err := c.login(keyId, keySecret)
-	if err != nil {
-		return nil, fmt.Errorf("login: %v", err)
+	if err := c.restoreSessionFromCache(); err != nil {
+		return nil, fmt.Errorf("cache: %v", err)
 	}
+
+	if c.Session.Expired() {
+		sess, err := c.authorizeAccount(keyId, keySecret)
+		if err != nil {
+			return nil, fmt.Errorf("authorize account: %v", err)
+		}
+
+		c.Session = sess
+
+		if err := c.cacheAuthorization(); err != nil {
+			return nil, fmt.Errorf("cache: %v", err)
+		}
+	}
+
+	// Set the new base URL after authorization
+	apiURL, err := url.Parse(c.Session.APIURL)
+	if err != nil {
+		return nil, fmt.Errorf("parse api url: %v", err)
+	}
+	c.baseURL = apiURL
 
 	c.Bucket = &BucketService{client: c}
 	c.File = &FileService{client: c}
@@ -177,7 +189,7 @@ func NewClient(keyId, keySecret string, opts ...ClientOpt) (*Client, error) {
 	return c, nil
 }
 
-// SetBaseURL is a client option for setting the base URL
+// SetBaseURL is a client option for setting the base URL.
 func SetBaseURL(bu string) ClientOpt {
 	return func(c *Client) error {
 		u, err := url.Parse(bu)
@@ -189,7 +201,7 @@ func SetBaseURL(bu string) ClientOpt {
 	}
 }
 
-// SetCache is a client option for changing cache client
+// SetCache is a client option for changing cache client.
 func SetCache(cache Cache) ClientOpt {
 	return func(c *Client) error {
 		c.cache = cache
@@ -215,9 +227,9 @@ func (c *Client) NewRequest(ctx context.Context, method, path string, body inter
 	return req, nil
 }
 
-// newRequest prepares a new Request
+// newRequest prepares a new Request.
 //
-// Creates a new request object without authorization data
+// Creates a new request object without authorization data.
 func (c *Client) newRequest(ctx context.Context, method, path string, body interface{}) (*http.Request, error) {
 	rel, err := url.Parse(path)
 	if err != nil {
@@ -250,7 +262,7 @@ func (c *Client) newRequest(ctx context.Context, method, path string, body inter
 	return req, nil
 }
 
-// Do sends an API request and returns the API response
+// Do sends an API request and returns the API response.
 //
 // The API response is JSON decoded and stored in the value pointed to by v.
 // If v implements the io.Writer interface, the raw response will be written
@@ -284,40 +296,8 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 	return resp, err
 }
 
-// login is used to log in to the B2 API
-//
-// Authorization API call returns a token and a URL that should be used as
-// the new base URL for subsequent API calls
-func (c *Client) login(keyId, keySecret string) error {
-	sess, err := restoreSessionFromCache(c.cache)
-	if err != nil {
-		return fmt.Errorf("cache: %v", err)
-	}
-
-	if sess == nil || sess.Expired() {
-		sess, err = c.newSession(keyId, keySecret)
-		if err != nil {
-			return err
-		}
-		err = cacheAuthorization(c.cache, sess)
-		if err != nil {
-			return fmt.Errorf("cache: %v", err)
-		}
-	}
-
-	c.Session = sess
-
-	// Set the new base URL
-	apiURL, err := url.Parse(sess.APIURL)
-	if err != nil {
-		return err
-	}
-	c.baseURL = apiURL
-
-	return nil
-}
-
-func (c *Client) newSession(keyId, keySecret string) (*Session, error) {
+// authorizeAccount is used to log in to the B2 API.
+func (c *Client) authorizeAccount(keyId, keySecret string) (*Session, error) {
 	ctx := context.Background()
 
 	req, err := c.newRequest(ctx, http.MethodGet, authorizationURL, nil)
@@ -341,32 +321,41 @@ func (c *Client) newSession(keyId, keySecret string) (*Session, error) {
 	return sess, nil
 }
 
-func restoreSessionFromCache(cache Cache) (*Session, error) {
-	val, err := cache.Get("session")
+// restoreSessionFromCache attempts to restore the session from cache.
+//
+// The cache might be disk based or an in-memory cache.
+func (c *Client) restoreSessionFromCache() error {
+	val, err := c.cache.Get("session")
 	if err != nil {
-		return nil, err
+		return err
 	}
 
+	// Session cache does not exist, so nothing to restore
 	if val == nil {
-		return nil, nil
+		return nil
 	}
 
 	sess, ok := val.(Session)
 	if !ok {
-		return nil, fmt.Errorf("cannot cast %T as session", val)
+		return fmt.Errorf("cannot cast %T as session", val)
 	}
 
-	return &sess, nil
+	c.Session = &sess
+
+	return nil
 }
 
-func cacheAuthorization(cache Cache, sess *Session) error {
-	return cache.Set("session", sess)
+// cacheAuthorization attempts to persist the session in cache.
+//
+// The cache might be disk based or an in-memory cache.
+func (c *Client) cacheAuthorization() error {
+	return c.cache.Set("session", c.Session)
 }
 
-// checkResponse checks the API response for errors and returns them if present
+// checkResponse checks the API response for errors and returns them if present.
 //
 // Any code other than 2xx is an error, and the response will contain a JSON
-// error structure indicating what went wrong
+// error structure indicating what went wrong.
 func checkResponse(r *http.Response) error {
 	if r.StatusCode >= 200 && r.StatusCode <= 299 {
 		return nil
@@ -398,7 +387,7 @@ func checkResponse(r *http.Response) error {
 	return fmt.Errorf("%v %v %v %v: %v %v", r.Proto, r.StatusCode, r.Request.Method, r.Request.URL, errResp.Code, errResp.Message)
 }
 
-// newDiskCache creates and returns disk cache
+// newDiskCache creates and returns disk cache.
 //
 // The directory used for caching is created if it doesn't exist already
 func newDiskCache() (*DiskCache, error) {
