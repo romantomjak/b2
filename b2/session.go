@@ -20,6 +20,9 @@ type Session struct {
 }
 
 // Expired returns whether the session has expired.
+//
+// Do not use expired sessions. Client will attempt to automatically
+// refresh expired sessions.
 func (s *Session) Expired() bool {
 	return timeNow().After(s.TokenExpiresAt)
 }
@@ -38,6 +41,9 @@ func restoreSessionFromCache(cache Cache) (*Session, error) {
 		return &Session{}, nil
 	}
 
+	// Admittedly, round-tripping cache value is fairly strange, but
+	// this is due to cache unmarshaling the session into a map when
+	// the cache is read from disk.
 	sessionBytes, err := json.Marshal(val)
 	if err != nil {
 		return nil, err

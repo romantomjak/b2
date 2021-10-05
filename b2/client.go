@@ -158,7 +158,7 @@ func NewClient(keyId, keySecret string, opts ...ClientOpt) (*Client, error) {
 
 	c.Session = session
 
-	// Set the new base URL after authorization
+	// Set the new base URL after a successful authorization
 	apiURL, err := url.Parse(c.Session.APIURL)
 	if err != nil {
 		return nil, fmt.Errorf("parse api url: %v", err)
