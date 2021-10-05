@@ -2,13 +2,24 @@ package command
 
 import (
 	"context"
+	"crypto/sha1"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"strings"
+	"time"
+
+	"github.com/vbauerster/mpb/v7"
+	"github.com/vbauerster/mpb/v7/decor"
 
 	"github.com/romantomjak/b2/b2"
+)
+
+const (
+	ClearLine    = "\033[2K"
+	MoveCursorUp = "\033[1F"
 )
 
 type PutCommand struct {
@@ -64,6 +75,48 @@ func (c *PutCommand) Run(args []string) int {
 		return 1
 	}
 
+	file, err := os.Open(args[0])
+	if err != nil {
+		c.ui.Error(fmt.Sprintf("Cannot open file: %s", args[0]))
+		return 1
+	}
+
+	info, err := file.Stat()
+	if err != nil {
+		c.ui.Error(fmt.Sprintf("Cannot open file: %s", args[0]))
+		return 1
+	}
+
+	hash := sha1.New()
+	_, err = io.Copy(hash, file)
+	if err != nil {
+		c.ui.Error(fmt.Sprintf("Cannot calculate file hash: %s", err))
+		return 1
+	}
+	sha1 := fmt.Sprintf("%x", hash.Sum(nil))
+
+	file.Seek(0, 0)
+
+	progress := mpb.New(
+		mpb.WithWidth(60),
+		mpb.WithRefreshRate(180*time.Millisecond),
+	)
+
+	bar := progress.Add(info.Size(),
+		mpb.NewBarFiller(mpb.BarStyle().Rbound("|")),
+		mpb.PrependDecorators(
+			decor.CountersKibiByte("% .2f / % .2f"),
+		),
+		mpb.AppendDecorators(
+			decor.EwmaETA(decor.ET_STYLE_GO, 90),
+			decor.Name(" ] "),
+			decor.EwmaSpeed(decor.UnitKiB, "% .2f", 60),
+		),
+	)
+
+	proxyReader := bar.ProxyReader(file)
+	defer proxyReader.Close()
+
 	bucketName, filePrefix := destinationBucketAndFilename(args[0], args[1])
 
 	// TODO: caching bucket name:id mappings could save this request
@@ -92,11 +145,25 @@ func (c *PutCommand) Run(args []string) int {
 		return 1
 	}
 
-	_, _, err = client.File.Upload(ctx, uploadAuth, args[0], filePrefix)
+	_, _, err = client.File.Upload(ctx, &b2.UploadInput{
+		Authorization: uploadAuth,
+		Body:          proxyReader,
+		Key:           filePrefix,
+		ContentSHA1:   sha1,
+		ContentLength: info.Size(),
+		Metadata: map[string]string{
+			"src_last_modified_millis": fmt.Sprintf("%d", info.ModTime().Unix()*1000),
+		},
+	})
 	if err != nil {
 		c.ui.Error(err.Error())
 		return 1
 	}
+
+	progress.Wait()
+
+	// Delete the progress bar line
+	c.ui.Output(strings.Join([]string{ClearLine, MoveCursorUp, ClearLine, MoveCursorUp}, ";"))
 
 	c.ui.Output(fmt.Sprintf("Uploaded %q to %q", args[0], path.Join(bucket.Name, filePrefix)))
 

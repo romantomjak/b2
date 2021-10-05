@@ -2,12 +2,9 @@ package b2
 
 import (
 	"context"
-	"crypto/sha1"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 )
 
 const (
@@ -108,40 +105,32 @@ func (s *FileService) UploadAuthorization(ctx context.Context, uploadAuthorizati
 	return auth, resp, nil
 }
 
+type UploadInput struct {
+	Authorization *UploadAuthorization
+	Body          io.Reader
+	Key           string
+	ContentSHA1   string
+	ContentLength int64
+	Metadata      map[string]string
+}
+
 // Upload a file
-func (s *FileService) Upload(ctx context.Context, uploadAuthorization *UploadAuthorization, src, dst string) (*File, *http.Response, error) {
-	f, err := os.Open(src)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer f.Close()
-
-	info, err := f.Stat()
+func (s *FileService) Upload(ctx context.Context, input *UploadInput) (*File, *http.Response, error) {
+	req, err := s.client.NewRequest(ctx, http.MethodPost, input.Authorization.UploadURL, input.Body)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	hash := sha1.New()
-	_, err = io.Copy(hash, f)
-	if err != nil {
-		return nil, nil, err
-	}
-	sha1 := fmt.Sprintf("%x", hash.Sum(nil))
+	req.ContentLength = input.ContentLength
 
-	f.Seek(0, 0)
-
-	req, err := s.client.NewRequest(ctx, http.MethodPost, uploadAuthorization.UploadURL, f)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	req.ContentLength = info.Size()
-
-	req.Header.Set("Authorization", uploadAuthorization.Token)
-	req.Header.Set("X-Bz-File-Name", url.QueryEscape(dst))
+	req.Header.Set("Authorization", input.Authorization.Token)
+	req.Header.Set("X-Bz-File-Name", url.QueryEscape(input.Key))
 	req.Header.Set("Content-Type", "b2/x-auto")
-	req.Header.Set("X-Bz-Content-Sha1", sha1)
-	req.Header.Set("X-Bz-Info-src_last_modified_millis", fmt.Sprintf("%d", info.ModTime().Unix()*1000))
+	req.Header.Set("X-Bz-Content-Sha1", input.ContentSHA1)
+
+	for key, val := range input.Metadata {
+		req.Header.Set("X-Bz-Info-"+key, val)
+	}
 
 	file := new(File)
 	resp, err := s.client.Do(req, file)
