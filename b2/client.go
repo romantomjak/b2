@@ -83,24 +83,6 @@ type authorizationResponse struct {
 	RecommendedPartSize int `json:"recommendedPartSize"`
 }
 
-// Session holds the information obtained from the login call.
-//
-// The information is sufficient enough to interact with the API
-// directly. Expired sessions can contain attributes with zero
-// values, so be sure to check whether the session has not expired
-// before using it.
-type Session struct {
-	authorizationResponse
-
-	// Timestamp of when the token will become invalid
-	TokenExpiresAt time.Time `json:"tokenExpiresAt"`
-}
-
-// Expired returns whether the session has expired.
-func (s *Session) Expired() bool {
-	return timeNow().After(s.TokenExpiresAt)
-}
-
 // Cache defines the interface for interacting with a cache.
 type Cache interface {
 	Get(key string) (interface{}, error)
@@ -159,22 +141,22 @@ func NewClient(keyId, keySecret string, opts ...ClientOpt) (*Client, error) {
 		c.cache = cache
 	}
 
-	if err := c.restoreSessionFromCache(); err != nil {
+	session, err := restoreSessionFromCache(c.cache)
+	if err != nil {
 		return nil, fmt.Errorf("cache: %v", err)
 	}
 
-	if c.Session.Expired() {
-		sess, err := c.authorizeAccount(keyId, keySecret)
+	if session.Expired() {
+		session, err = c.authorizeAccount(keyId, keySecret)
 		if err != nil {
 			return nil, fmt.Errorf("authorize account: %v", err)
 		}
-
-		c.Session = sess
-
-		if err := c.cacheAuthorization(); err != nil {
+		if err := commitSessionToCache(c.cache, session); err != nil {
 			return nil, fmt.Errorf("cache: %v", err)
 		}
 	}
+
+	c.Session = session
 
 	// Set the new base URL after authorization
 	apiURL, err := url.Parse(c.Session.APIURL)
@@ -319,37 +301,6 @@ func (c *Client) authorizeAccount(keyId, keySecret string) (*Session, error) {
 	}
 
 	return sess, nil
-}
-
-// restoreSessionFromCache attempts to restore the session from cache.
-//
-// The cache might be disk based or an in-memory cache.
-func (c *Client) restoreSessionFromCache() error {
-	val, err := c.cache.Get("session")
-	if err != nil {
-		return err
-	}
-
-	// Session cache does not exist, so nothing to restore
-	if val == nil {
-		return nil
-	}
-
-	sess, ok := val.(Session)
-	if !ok {
-		return fmt.Errorf("cannot cast %T as session", val)
-	}
-
-	c.Session = &sess
-
-	return nil
-}
-
-// cacheAuthorization attempts to persist the session in cache.
-//
-// The cache might be disk based or an in-memory cache.
-func (c *Client) cacheAuthorization() error {
-	return c.cache.Set("session", c.Session)
 }
 
 // checkResponse checks the API response for errors and returns them if present.

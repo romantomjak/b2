@@ -38,8 +38,8 @@ func (c *DiskCache) Get(key string) (interface{}, error) {
 	}
 
 	m := make(map[string]interface{})
-	err = json.Unmarshal(cacheBytes, &m)
-	if err != nil {
+
+	if err := json.Unmarshal(cacheBytes, &m); err != nil {
 		return nil, err
 	}
 
@@ -54,7 +54,7 @@ func (c *DiskCache) Set(key string, value interface{}) error {
 	m := make(map[string]interface{})
 	m[key] = value
 
-	jsonBytes, err := json.MarshalIndent(m, "", " ")
+	jsonBytes, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
 		return err
 	}
