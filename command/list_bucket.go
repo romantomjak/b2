@@ -7,7 +7,7 @@ import (
 	"github.com/romantomjak/b2/b2"
 )
 
-func (c *ListCommand) listBuckets() int {
+func (c *ListCommand) listBuckets(longMode bool) int {
 	client, err := c.Client()
 	if err != nil {
 		c.ui.Error(fmt.Sprintf("Error: %v", err))
@@ -27,7 +27,11 @@ func (c *ListCommand) listBuckets() int {
 	}
 
 	for _, bucket := range buckets {
-		c.ui.Output(bucket.Name + "/")
+		if longMode {
+			c.ui.Output(fmt.Sprintf("d  0B %s", bucket.Name+"/"))
+		} else {
+			c.ui.Output(bucket.Name + "/")
+		}
 	}
 
 	return 0

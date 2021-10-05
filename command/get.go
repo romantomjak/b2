@@ -3,8 +3,11 @@ package command
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"strings"
+
+	"github.com/mitchellh/ioprogress"
 )
 
 type GetCommand struct {
@@ -64,7 +67,18 @@ func (c *GetCommand) Run(args []string) int {
 
 	ctx := context.TODO()
 
-	_, err = client.File.Download(ctx, uri, out)
+	r, w := io.Pipe()
+	progressR := &ioprogress.Reader{
+		Reader:   r,
+		Size:     100000,
+		DrawFunc: ioprogress.DrawTerminalf(os.Stdout, ioprogress.DrawTextFormatBar(20)),
+	}
+
+	go func() {
+		io.Copy(out, progressR)
+	}()
+
+	_, err = client.File.Download(ctx, uri, w)
 	if err != nil {
 		c.ui.Error(err.Error())
 		os.Remove(out.Name())

@@ -11,8 +11,11 @@ import (
 )
 
 const (
-	listFilesURL  = "b2api/v2/b2_list_file_names"
-	fileUploadURL = "b2api/v2/b2_get_upload_url"
+	listFilesURL           = "b2api/v2/b2_list_file_names"
+	fileUploadURL          = "b2api/v2/b2_get_upload_url"
+	filePartUploadURL      = "b2api/v2/b2_get_upload_part_url"
+	fileStartLargeFileURL  = "b2api/v2/b2_start_large_file"
+	fileFinishLargeFileURL = "b2api/v2/b2_finish_large_file"
 )
 
 // File describes a File or a Folder in a Bucket
@@ -48,9 +51,15 @@ type UploadAuthorizationRequest struct {
 	BucketID string `json:"bucketId"`
 }
 
+// PartUploadAuthorizationRequest represents a request to obtain a URL
+// for uploading parts of a file.
+type PartUploadAuthorizationRequest struct {
+	FileID string `json:"fileId"`
+}
+
 // UploadAuthorization contains the information for uploading a file
+// or a part of a file.
 type UploadAuthorization struct {
-	BucketID  string `json:"bucketId"`
 	UploadURL string `json:"uploadUrl"`
 	Token     string `json:"authorizationToken"`
 }
@@ -99,12 +108,25 @@ func (s *FileService) UploadAuthorization(ctx context.Context, uploadAuthorizati
 		return nil, nil, err
 	}
 
+	return s.uploadAuthorization(req)
+}
+
+// PartUploadAuthorization returns the information for uploading a part of a file
+func (s *FileService) PartUploadAuthorization(ctx context.Context, uploadAuthorizationRequest *PartUploadAuthorizationRequest) (*UploadAuthorization, *http.Response, error) {
+	req, err := s.client.NewRequest(ctx, http.MethodPost, filePartUploadURL, uploadAuthorizationRequest)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return s.uploadAuthorization(req)
+}
+
+func (s *FileService) uploadAuthorization(req *http.Request) (*UploadAuthorization, *http.Response, error) {
 	auth := new(UploadAuthorization)
 	resp, err := s.client.Do(req, auth)
 	if err != nil {
 		return nil, resp, err
 	}
-
 	return auth, resp, nil
 }
 
@@ -144,6 +166,108 @@ func (s *FileService) Upload(ctx context.Context, uploadAuthorization *UploadAut
 	req.Header.Set("X-Bz-Info-src_last_modified_millis", fmt.Sprintf("%d", info.ModTime().Unix()*1000))
 
 	file := new(File)
+	resp, err := s.client.Do(req, file)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	return file, resp, nil
+}
+
+type UploadRequest struct {
+	Body          io.Reader
+	ContentSHA1   string
+	Authorization *UploadAuthorization
+	PartNumber    int64
+}
+
+type FilePart struct {
+	// Number is the ID of the part
+	Number int64 `json:"partNumber"`
+
+	// FileID is the ID of the File this part is part of.
+	FileID string `json:"fileId"`
+
+	// Size returns the number of bytes stored in the part.
+	Size int64 `json:"contentLength"`
+
+	// SHA1 is the SHA1 of the bytes stored in the part.
+	SHA1 string `json:"contentSha1"`
+}
+
+// Upload a part of a file
+func (s *FileService) UploadPart(ctx context.Context, uploadRequest *UploadRequest) (*FilePart, *http.Response, error) {
+	// TODO: the authorization should really be obtained here, but
+	// 	   : backblaze requires that each thread gets it's own auth
+
+	req, err := s.client.NewRequest(ctx, http.MethodPost, uploadRequest.Authorization.UploadURL, uploadRequest.Body)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	req.Header.Set("Authorization", uploadRequest.Authorization.Token)
+	req.Header.Set("Content-Type", "b2/x-auto")
+	req.Header.Set("X-Bz-Content-Sha1", uploadRequest.ContentSHA1)
+
+	part := new(FilePart)
+	resp, err := s.client.Do(req, part)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	return part, resp, nil
+}
+
+type LargeFileRequest struct {
+	BucketID    string            `json:"bucketId"`
+	Filename    string            `json:"fileName"`
+	ContentType string            `json:"contentType"`
+	FileInfo    map[string]string `json:"fileInfo"`
+}
+
+type LargeFileResponse struct {
+	FileID      string            `json:"fileId"`
+	BucketID    string            `json:"bucketId"`
+	Filename    string            `json:"fileName"`
+	ContentType string            `json:"contentType"`
+	FileInfo    map[string]string `json:"fileInfo"`
+}
+
+// Upload a part of a file
+func (s *FileService) StartLargeFile(ctx context.Context, largeFileRequest *LargeFileRequest) (*LargeFileResponse, *http.Response, error) {
+	// TODO: the authorization should really be obtained here, but
+	// 	   : backblaze requires that each thread gets it's own auth
+
+	req, err := s.client.NewRequest(ctx, http.MethodPost, fileStartLargeFileURL, largeFileRequest)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	file := new(LargeFileResponse)
+	resp, err := s.client.Do(req, file)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	return file, resp, nil
+}
+
+type FinishLargeFileRequest struct {
+	FileID    string   `json:"fileId"`
+	PartSHA1s []string `json:"partSha1Array"`
+}
+
+// Upload a part of a file
+func (s *FileService) FinishLargeFile(ctx context.Context, largeFileRequest *FinishLargeFileRequest) (*LargeFileResponse, *http.Response, error) {
+	// TODO: the authorization should really be obtained here, but
+	// 	   : backblaze requires that each thread gets it's own auth
+
+	req, err := s.client.NewRequest(ctx, http.MethodPost, fileFinishLargeFileURL, largeFileRequest)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	file := new(LargeFileResponse)
 	resp, err := s.client.Do(req, file)
 	if err != nil {
 		return nil, resp, err

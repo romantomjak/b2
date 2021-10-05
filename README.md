@@ -55,6 +55,7 @@ This is how far I've gotten:
 - [x] Upload small files (<100 MB)
 - [ ] Upload large files
 - [x] Download a file
+- [ ] Cache upload URLs
 
 ## Contributing
 

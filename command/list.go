@@ -16,7 +16,15 @@ Usage: b2 list [<path>]
 
 General Options:
 
-  ` + c.generalOptions()
+  ` + c.generalOptions() + `
+
+List Options:
+  
+  -long
+    List files in long format. The following extra information
+    is displayed for each file: file mode, number of bytes in
+    the file and the timestamp of when file was uploaded.
+`
 	return strings.TrimSpace(helpText)
 }
 
@@ -27,8 +35,11 @@ func (c *ListCommand) Synopsis() string {
 func (c *ListCommand) Name() string { return "list" }
 
 func (c *ListCommand) Run(args []string) int {
+	var longMode bool
+
 	flags := c.flagSet()
 	flags.Usage = func() { c.ui.Output(c.Help()) }
+	flags.BoolVar(&longMode, "long", false, "List files in long mode")
 
 	if err := flags.Parse(args); err != nil {
 		return 1
@@ -44,9 +55,9 @@ func (c *ListCommand) Run(args []string) int {
 
 	// No path argument - list buckets
 	if numArgs == 0 {
-		return c.listBuckets()
+		return c.listBuckets(longMode)
 	}
 
 	// User specified a path, so list files in path
-	return c.listFiles(args[0])
+	return c.listFiles(longMode, args[0])
 }
