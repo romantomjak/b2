@@ -1,6 +1,7 @@
 package command
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -9,13 +10,18 @@ import (
 	"testing"
 
 	"github.com/mitchellh/cli"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/romantomjak/b2/b2"
 	"github.com/romantomjak/b2/testutil"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestPutCommand_CanUploadLargeFile(t *testing.T) {
-	server, mux := testutil.NewServer()
+	// Override auth response to recommend 6 byte chunks
+	config := testutil.DefaultServerConfig
+	config.RecommendedPartSize = 6
+
+	server, mux := testutil.NewServerWithConfig(config)
 	defer server.Close()
 
 	mux.HandleFunc("/b2api/v2/b2_list_buckets", func(w http.ResponseWriter, r *http.Request) {
@@ -38,6 +44,25 @@ func TestPutCommand_CanUploadLargeFile(t *testing.T) {
 			"uploadUrl": "%s",
 			"authorizationToken": "some-secret-token"
 		}`, server.URL)
+	})
+
+	mux.HandleFunc("/b2api/v2/b2_start_large_file", func(rw http.ResponseWriter, r *http.Request) {
+		// Decode body to pull out file name
+		var got map[string]interface{}
+		err := json.NewDecoder(r.Body).Decode(&got)
+		assert.NoError(t, err)
+
+		// Re-encode FileInfo map
+		infoBytes, err := json.Marshal(got["fileInfo"])
+		assert.NoError(t, err)
+
+		fmt.Fprintf(rw, `{
+			"fileId": "4_zb2f6f21365e1d29f6c580f18",
+			"bucketId": "%s",
+			"fileName": "%s",
+			"contentType": "%s",
+			"fileInfo": %s
+		}`, got["bucketId"], got["fileName"], got["contentType"], infoBytes)
 	})
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

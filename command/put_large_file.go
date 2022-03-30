@@ -87,8 +87,8 @@ func (c *PutCommand) putLargeFile(source, destination string) int {
 
 	c.ui.Info(fmt.Sprintf("Selected %d parts of %d", numParts, partSize))
 
-	var chunks chan chunk
-	var results chan chunk
+	chunks := make(chan chunk)
+	results := make(chan chunk)
 	for i := 0; i < 4; i++ {
 		go c.uploadChunk(chunks, results)
 	}
@@ -106,6 +106,8 @@ func (c *PutCommand) putLargeFile(source, destination string) int {
 		partSHA1s = append(partSHA1s, partSHA1)
 		chunks <- ch
 	}
+
+	// TODO: range over results chan and re-enque failed chunks
 
 	ctx = context.TODO()
 	finreq := &b2.FinishLargeFileRequest{

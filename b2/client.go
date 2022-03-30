@@ -248,6 +248,10 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 				return nil, err
 			}
 		} else {
+			// if req.URL.Path == "/b2api/v2/b2_start_large_file" {
+			// 	fileBytes, _ := ioutil.ReadAll(resp.Body)
+			// 	panic(string(fileBytes))
+			// }
 			err := json.NewDecoder(resp.Body).Decode(v)
 			if err != nil {
 				return nil, err

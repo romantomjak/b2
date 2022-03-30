@@ -6,6 +6,14 @@ import (
 	"net/http/httptest"
 )
 
+type ServerConfig struct {
+	RecommendedPartSize int64
+}
+
+var DefaultServerConfig = &ServerConfig{
+	RecommendedPartSize: 100000000,
+}
+
 // NewServer starts and returns a new HTTP Server.
 //
 // It is used for end-to-end HTTP tests and is preconfigured to return
@@ -14,6 +22,10 @@ import (
 //
 // It is callers responsibility to call Close when finished, to shut it down
 func NewServer() (*httptest.Server, *http.ServeMux) {
+	return NewServerWithConfig(DefaultServerConfig)
+}
+
+func NewServerWithConfig(config *ServerConfig) (*httptest.Server, *http.ServeMux) {
 	mux := http.NewServeMux()
 	server := httptest.NewServer(mux)
 	authJSON := `{
@@ -28,10 +40,10 @@ func NewServer() (*httptest.Server, *http.ServeMux) {
 		"apiUrl": "%s",
 		"authorizationToken": "4_0022623512fc8f80000000001_0186e431_d18d02_acct_tH7VW03boebOXayIc43-sxptpfA=",
 		"downloadUrl": "%s",
-		"recommendedPartSize": 100000000
+		"recommendedPartSize": %d
 	}`
 	mux.HandleFunc("/b2api/v2/b2_authorize_account", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, authJSON, server.URL, server.URL)
+		fmt.Fprintf(w, authJSON, server.URL, server.URL, config.RecommendedPartSize)
 	})
 	return server, mux
 }
