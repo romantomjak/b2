@@ -2,12 +2,11 @@ package b2
 
 import (
 	"context"
-	"crypto/sha1"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"os"
+	"time"
 )
 
 const (
@@ -53,6 +52,16 @@ type UploadAuthorization struct {
 	BucketID  string `json:"bucketId"`
 	UploadURL string `json:"uploadUrl"`
 	Token     string `json:"authorizationToken"`
+}
+
+// UploadRequest represents a request to upload a file.
+type UploadRequest struct {
+	Authorization *UploadAuthorization
+	Body          io.Reader
+	Key           string
+	ChecksumSHA1  string
+	ContentLength int64
+	LastModified  time.Time
 }
 
 // FileService handles communication with the File related methods of the
@@ -108,40 +117,20 @@ func (s *FileService) UploadAuthorization(ctx context.Context, uploadAuthorizati
 	return auth, resp, nil
 }
 
-// Upload a file
-func (s *FileService) Upload(ctx context.Context, uploadAuthorization *UploadAuthorization, src, dst string) (*File, *http.Response, error) {
-	f, err := os.Open(src)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer f.Close()
-
-	info, err := f.Stat()
+// Upload a file.
+func (s *FileService) Upload(ctx context.Context, uploadRequest *UploadRequest) (*File, *http.Response, error) {
+	req, err := s.client.NewRequest(ctx, http.MethodPost, uploadRequest.Authorization.UploadURL, uploadRequest.Body)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	hash := sha1.New()
-	_, err = io.Copy(hash, f)
-	if err != nil {
-		return nil, nil, err
-	}
-	sha1 := fmt.Sprintf("%x", hash.Sum(nil))
+	req.ContentLength = uploadRequest.ContentLength
 
-	f.Seek(0, 0)
-
-	req, err := s.client.NewRequest(ctx, http.MethodPost, uploadAuthorization.UploadURL, f)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	req.ContentLength = info.Size()
-
-	req.Header.Set("Authorization", uploadAuthorization.Token)
-	req.Header.Set("X-Bz-File-Name", url.QueryEscape(dst))
+	req.Header.Set("Authorization", uploadRequest.Authorization.Token)
+	req.Header.Set("X-Bz-File-Name", url.QueryEscape(uploadRequest.Key))
 	req.Header.Set("Content-Type", "b2/x-auto")
-	req.Header.Set("X-Bz-Content-Sha1", sha1)
-	req.Header.Set("X-Bz-Info-src_last_modified_millis", fmt.Sprintf("%d", info.ModTime().Unix()*1000))
+	req.Header.Set("X-Bz-Content-Sha1", uploadRequest.ChecksumSHA1)
+	req.Header.Set("X-Bz-Info-src_last_modified_millis", fmt.Sprintf("%d", uploadRequest.LastModified.Unix()*1000))
 
 	file := new(File)
 	resp, err := s.client.Do(req, file)

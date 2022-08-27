@@ -2,11 +2,16 @@ package command
 
 import (
 	"context"
+	"crypto/sha1"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"strings"
+	"time"
+
+	"github.com/gosuri/uiprogress"
 
 	"github.com/romantomjak/b2/b2"
 )
@@ -80,9 +85,9 @@ func (c *PutCommand) Run(args []string) int {
 		return 1
 	}
 
-	// Request upload url
 	ctx := context.TODO()
 
+	// Request upload url
 	uploadAuthReq := &b2.UploadAuthorizationRequest{
 		BucketID: bucket.ID,
 	}
@@ -92,15 +97,101 @@ func (c *PutCommand) Run(args []string) int {
 		return 1
 	}
 
-	_, _, err = client.File.Upload(ctx, uploadAuth, args[0], filePrefix)
+	// Open file for reading.
+	f, err := os.Open(args[0])
+	if err != nil {
+		c.ui.Error(err.Error())
+		return 1
+	}
+	defer f.Close()
+
+	// Stat the file.
+	info, err := f.Stat()
 	if err != nil {
 		c.ui.Error(err.Error())
 		return 1
 	}
 
-	c.ui.Output(fmt.Sprintf("Uploaded %q to %q", args[0], path.Join(bucket.Name, filePrefix)))
+	// Calculate SHA1 checksum
+	hash := sha1.New()
+	_, err = io.Copy(hash, f)
+	if err != nil {
+		c.ui.Error(err.Error())
+		return 1
+	}
+	sha1 := fmt.Sprintf("%x", hash.Sum(nil))
+
+	// Rewind the file
+	f.Seek(0, 0)
+
+	// Create a progress bar.
+	pr, err := newProgressReader(f)
+	if err != nil {
+		c.ui.Error(err.Error())
+		return 1
+	}
+	pr.Start()
+	defer pr.Stop()
+
+	uploadReq := &b2.UploadRequest{
+		Authorization: uploadAuth,
+		Body:          pr,
+		Key:           filePrefix,
+		ChecksumSHA1:  sha1,
+		ContentLength: info.Size(),
+		LastModified:  info.ModTime(),
+	}
+
+	_, _, err = client.File.Upload(ctx, uploadReq)
+	if err != nil {
+		c.ui.Error(err.Error())
+		return 1
+	}
 
 	return 0
+}
+
+// progressReader is a helper for tracking the amount of bytes uploaded.
+type progressReader struct {
+	file     *os.File
+	progress *uiprogress.Progress
+	bar      *uiprogress.Bar
+}
+
+func newProgressReader(f *os.File) (*progressReader, error) {
+	info, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+
+	progress := uiprogress.New()
+	progress.SetRefreshInterval(time.Millisecond * 1)
+
+	bar := progress.AddBar(int(info.Size()))
+	bar.AppendCompleted()
+	bar.PrependElapsed()
+
+	return &progressReader{
+		file:     f,
+		progress: progress,
+		bar:      bar,
+	}, nil
+}
+
+func (pr *progressReader) Read(p []byte) (n int, err error) {
+	n, err = pr.file.Read(p)
+	for i := 0; i < n; i++ {
+		pr.bar.Incr()
+	}
+	return
+}
+
+func (pr *progressReader) Start() {
+	pr.progress.Start()
+}
+
+func (pr *progressReader) Stop() {
+	pr.progress.Stop()
 }
 
 func (c *PutCommand) findBucketByName(name string) (*b2.Bucket, error) {
