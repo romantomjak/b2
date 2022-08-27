@@ -11,31 +11,34 @@ import (
 	"testing"
 	"time"
 
-	"github.com/romantomjak/b2/testutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/romantomjak/b2/testutil"
 )
 
 func TestClient_Authorization(t *testing.T) {
 	server, _ := testutil.NewServer()
 	defer server.Close()
 
-	cache, _ := NewInMemoryCache()
+	cache, err := NewInMemoryCache()
+	require.NoError(t, err)
 
 	client, err := NewClient("key-id", "key-secret", SetBaseURL(server.URL), SetCache(cache))
-
 	assert.NoError(t, err)
-	assert.Equal(t, "abc123", client.Session.AccountID)
+	assert.NotNil(t, client)
 }
 
 func TestClient_AuthorizationCache(t *testing.T) {
 	server, _ := testutil.NewServer()
 	defer server.Close()
 
-	tmpDir, _ := ioutil.TempDir(os.TempDir(), "b2-cli-test-")
+	tmpDir, err := ioutil.TempDir(os.TempDir(), "b2-cli-test-")
+	require.NoError(t, err)
 	defer os.RemoveAll(tmpDir)
 
 	cache, err := NewDiskCache(tmpDir)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	timeNow = func() time.Time {
 		return time.Date(2020, 10, 21, 22, 48, 0, 0, time.UTC)
@@ -60,7 +63,7 @@ func TestClient_AuthorizationCache(t *testing.T) {
 	}`
 
 	_, err = NewClient("key-id", "key-secret", SetBaseURL(server.URL), SetCache(cache))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	cacheFile := filepath.Join(tmpDir, "cache")
 	authBytes, err := ioutil.ReadFile(cacheFile)
@@ -72,14 +75,17 @@ func TestClient_NewRequestDefaults(t *testing.T) {
 	server, _ := testutil.NewServer()
 	defer server.Close()
 
-	cache, _ := NewInMemoryCache()
+	cache, err := NewInMemoryCache()
+	require.NoError(t, err)
 
-	client, _ := NewClient("key-id", "key-secret", SetBaseURL(server.URL), SetCache(cache))
+	client, err := NewClient("key-id", "key-secret", SetBaseURL(server.URL), SetCache(cache))
+	require.NoError(t, err)
 
 	inBody := map[string]string{"foo": "bar", "hello": "world"}
 	outBody := `{"foo":"bar","hello":"world"}` + "\n"
 	ctx := context.TODO()
-	req, _ := client.NewRequest(ctx, http.MethodPost, "foo", inBody)
+	req, err := client.NewRequest(ctx, http.MethodPost, "foo", inBody)
+	require.NoError(t, err)
 
 	// test relative URL was expanded
 	absURL := fmt.Sprintf("%s/%s", server.URL, "foo")
@@ -94,7 +100,8 @@ func TestClient_NewRequestDefaults(t *testing.T) {
 	assert.Equal(t, "4_0022623512fc8f80000000001_0186e431_d18d02_acct_tH7VW03boebOXayIc43-sxptpfA=", authToken)
 
 	// test body was JSON encoded
-	body, _ := ioutil.ReadAll(req.Body)
+	body, err := ioutil.ReadAll(req.Body)
+	require.NoError(t, err)
 	assert.Equal(t, outBody, string(body))
 }
 
@@ -112,9 +119,10 @@ func TestClient_APIErrorsAreReportedToUser(t *testing.T) {
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
-	cache, _ := NewInMemoryCache()
+	cache, err := NewInMemoryCache()
+	require.NoError(t, err)
 
-	_, err := NewClient("key-id", "key-secret", SetBaseURL(server.URL), SetCache(cache))
+	_, err = NewClient("key-id", "key-secret", SetBaseURL(server.URL), SetCache(cache))
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "The applicationKeyId and/or the applicationKey are wrong.")

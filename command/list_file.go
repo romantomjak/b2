@@ -58,7 +58,7 @@ func (c *ListCommand) findBucketByName(name string) (*b2.Bucket, error) {
 	}
 
 	req := &b2.BucketListRequest{
-		AccountID: client.Session.AccountID,
+		AccountID: client.AccountID,
 		Name:      name,
 	}
 

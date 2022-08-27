@@ -60,7 +60,7 @@ func (c *GetCommand) Run(args []string) int {
 	}
 
 	// Write the data to file
-	uri := fmt.Sprintf("%s/file/%s", client.Session.DownloadURL, args[0])
+	uri := fmt.Sprintf("%s/file/%s", client.DownloadURL, args[0])
 
 	ctx := context.TODO()
 

@@ -15,7 +15,7 @@ func (c *ListCommand) listBuckets() int {
 	}
 
 	req := &b2.BucketListRequest{
-		AccountID: client.Session.AccountID,
+		AccountID: client.AccountID,
 	}
 
 	ctx := context.TODO()
