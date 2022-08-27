@@ -44,7 +44,10 @@ type errorResponse struct {
 
 // Cache defines the interface for interacting with a cache.
 type Cache interface {
-	Get(key string) (interface{}, error)
+	// Get reads the value at key into the object pointed to by value.
+	Get(key string, value interface{}) error
+
+	// Set writes the value at key from the object pointed to by value.
 	Set(key string, value interface{}) error
 }
 
