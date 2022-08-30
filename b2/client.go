@@ -75,8 +75,9 @@ type Client struct {
 	// name to ID mappings required for many API calls.
 	cache Cache
 
-	AccountID   string
-	DownloadURL string
+	AccountID           string
+	DownloadURL         string
+	RecommendedPartSize int64
 
 	// Services used for communicating with the API.
 	Authorization *AuthorizationService
@@ -140,6 +141,7 @@ func NewClient(keyId, keySecret string, opts ...ClientOpt) (*Client, error) {
 
 	c.AccountID = auth.AccountID
 	c.DownloadURL = auth.DownloadURL
+	c.RecommendedPartSize = int64(auth.RecommendedPartSize)
 
 	return c, nil
 }

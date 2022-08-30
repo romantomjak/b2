@@ -2,10 +2,8 @@ package command
 
 import (
 	"context"
-	"crypto/sha1"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path"
 	"strings"
@@ -57,23 +55,12 @@ func (c *PutCommand) Run(args []string) int {
 	}
 
 	// Check that source file exists
-	if !fileExists(args[0]) {
-		c.ui.Error(fmt.Sprintf("File does not exist: %s", args[0]))
-		return 1
-	}
-
-	// FIXME: remove when large file upload is implemented
-	err := checkMaxFileSize(args[0])
+	info, err := os.Stat(args[0])
 	if err != nil {
-		c.ui.Error("Large file upload is not yet implemented. Maximum file size is 100 MB")
-		return 1
-	}
-
-	bucketName, filePrefix := destinationBucketAndFilename(args[0], args[1])
-
-	// TODO: caching bucket name:id mappings could save this request
-	bucket, err := c.findBucketByName(bucketName)
-	if err != nil {
+		if os.IsNotExist(err) {
+			c.ui.Error(fmt.Sprintf("File does not exist: %s", args[0]))
+			return 1
+		}
 		c.ui.Error(fmt.Sprintf("Error: %v", err))
 		return 1
 	}
@@ -85,70 +72,11 @@ func (c *PutCommand) Run(args []string) int {
 		return 1
 	}
 
-	ctx := context.TODO()
-
-	// Request upload url
-	uploadAuthReq := &b2.UploadAuthorizationRequest{
-		BucketID: bucket.ID,
-	}
-	uploadAuth, _, err := client.File.UploadAuthorization(ctx, uploadAuthReq)
-	if err != nil {
-		c.ui.Error(fmt.Sprintf("Error: %v", err))
-		return 1
+	if info.Size() > client.RecommendedPartSize {
+		return c.putLargeFile(info, args[0], args[1])
 	}
 
-	// Open file for reading.
-	f, err := os.Open(args[0])
-	if err != nil {
-		c.ui.Error(err.Error())
-		return 1
-	}
-	defer f.Close()
-
-	// Stat the file.
-	info, err := f.Stat()
-	if err != nil {
-		c.ui.Error(err.Error())
-		return 1
-	}
-
-	// Calculate SHA1 checksum
-	hash := sha1.New()
-	_, err = io.Copy(hash, f)
-	if err != nil {
-		c.ui.Error(err.Error())
-		return 1
-	}
-	sha1 := fmt.Sprintf("%x", hash.Sum(nil))
-
-	// Rewind the file
-	f.Seek(0, 0)
-
-	// Create a progress bar.
-	pr, err := newProgressReader(f)
-	if err != nil {
-		c.ui.Error(err.Error())
-		return 1
-	}
-	pr.Start()
-	defer pr.Stop()
-
-	uploadReq := &b2.UploadRequest{
-		Authorization: uploadAuth,
-		Body:          pr,
-		Key:           filePrefix,
-		ChecksumSHA1:  sha1,
-		ContentLength: info.Size(),
-		LastModified:  info.ModTime(),
-	}
-
-	_, _, err = client.File.Upload(ctx, uploadReq)
-	if err != nil {
-		c.ui.Error(err.Error())
-		return 1
-	}
-
-	return 0
+	return c.putSmallFile(info, args[0], args[1])
 }
 
 // progressReader is a helper for tracking the amount of bytes uploaded.

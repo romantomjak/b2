@@ -10,8 +10,12 @@ import (
 )
 
 const (
-	listFilesURL  = "b2api/v2/b2_list_file_names"
-	fileUploadURL = "b2api/v2/b2_get_upload_url"
+	listFilesURL           = "b2api/v2/b2_list_file_names"
+	fileUploadURL          = "b2api/v2/b2_get_upload_url"
+	filePartUploadURL      = "b2api/v2/b2_get_upload_part_url"
+	fileStartLargeFileURL  = "b2api/v2/b2_start_large_file"
+	fileFinishLargeFileURL = "b2api/v2/b2_finish_large_file"
+	fileCancelLargeFileURL = "b2api/v2/b2_cancel_large_file"
 )
 
 // File describes a File or a Folder in a Bucket
@@ -20,12 +24,19 @@ type File struct {
 	Action          string            `json:"action"`
 	BucketID        string            `json:"bucketId"`
 	ContentLength   int               `json:"contentLength"`
-	ContentSha1     string            `json:"contentSha1"`
+	ContentSHA1     string            `json:"contentSha1"`
 	ContentType     string            `json:"contentType"`
 	FileID          string            `json:"fileId"`
 	FileInfo        map[string]string `json:"fileInfo"`
 	FileName        string            `json:"fileName"`
 	UploadTimestamp int64             `json:"uploadTimestamp"`
+}
+
+type FilePart struct {
+	Number        int64  `json:"partNumber"`
+	FileID        string `json:"fileId"`
+	ContentLength int64  `json:"contentLength"`
+	ContentSHA1   string `json:"contentSha1"`
 }
 
 // FileListRequest represents a request to list files in a Bucket
@@ -47,7 +58,14 @@ type UploadAuthorizationRequest struct {
 	BucketID string `json:"bucketId"`
 }
 
+// PartUploadAuthorizationRequest represents a request to obtain a URL
+// for uploading parts of a file.
+type UploadPartAuthorizationRequest struct {
+	FileID string `json:"fileId"`
+}
+
 // UploadAuthorization contains the information for uploading a file
+// or a part of a file.
 type UploadAuthorization struct {
 	BucketID  string `json:"bucketId"`
 	UploadURL string `json:"uploadUrl"`
@@ -62,6 +80,38 @@ type UploadRequest struct {
 	ChecksumSHA1  string
 	ContentLength int64
 	LastModified  time.Time
+}
+
+type UploadPartRequest struct {
+	Authorization *UploadAuthorization
+	PartNumber    int64
+	Body          io.Reader
+	ChecksumSHA1  string
+	ContentLength int64
+}
+
+// StartLargeFileRequest prepares for uploading the parts of a large file.
+type StartLargeFileRequest struct {
+	BucketID    string            `json:"bucketId"`
+	Filename    string            `json:"fileName"`
+	ContentType string            `json:"contentType"`
+	FileInfo    map[string]string `json:"fileInfo"`
+}
+
+// FinishLargeFileRequest converts the parts that have been uploaded into a single B2 file.
+type FinishLargeFileRequest struct {
+	// The ID returned by StartLargeFileRequest.
+	FileID string `json:"fileId"`
+
+	// An array of SHA1 checksums of the parts of the large file. This is used to check that
+	// the parts were uploaded in the right order, and that none were missed.
+	PartSHA1 []string `json:"partSha1Array"`
+}
+
+// CancelLargeFileRequest cancels the upload of a large file, and deletes all of the parts that have been uploaded.
+type CancelLargeFileRequest struct {
+	// The ID returned by StartLargeFileRequest.
+	FileID string `json:"fileId"`
 }
 
 // FileService handles communication with the File related methods of the
@@ -101,7 +151,7 @@ func (s *FileService) Download(ctx context.Context, url string, w io.Writer) (*h
 	return resp, err
 }
 
-// UploadAuthorization returns the information for uploading a file
+// UploadAuthorization returns the information for uploading a file.
 func (s *FileService) UploadAuthorization(ctx context.Context, uploadAuthorizationRequest *UploadAuthorizationRequest) (*UploadAuthorization, *http.Response, error) {
 	req, err := s.client.NewRequest(ctx, http.MethodPost, fileUploadURL, uploadAuthorizationRequest)
 	if err != nil {
@@ -115,6 +165,22 @@ func (s *FileService) UploadAuthorization(ctx context.Context, uploadAuthorizati
 	}
 
 	return auth, resp, nil
+}
+
+// PartUploadAuthorization returns the information for uploading a part of a file.
+func (s *FileService) UploadPartAuthorization(ctx context.Context, authorizationRequest *UploadPartAuthorizationRequest) (*UploadAuthorization, error) {
+	req, err := s.client.NewRequest(ctx, http.MethodPost, filePartUploadURL, authorizationRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	auth := new(UploadAuthorization)
+	_, err = s.client.Do(req, auth)
+	if err != nil {
+		return nil, err
+	}
+
+	return auth, nil
 }
 
 // Upload a file.
@@ -139,4 +205,71 @@ func (s *FileService) Upload(ctx context.Context, uploadRequest *UploadRequest) 
 	}
 
 	return file, resp, nil
+}
+
+func (s *FileService) UploadPart(ctx context.Context, uploadRequest *UploadPartRequest) (*FilePart, error) {
+	req, err := s.client.newRequest(ctx, http.MethodPost, uploadRequest.Authorization.UploadURL, uploadRequest.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.ContentLength = uploadRequest.ContentLength
+
+	req.Header.Set("Authorization", uploadRequest.Authorization.Token)
+	req.Header.Set("X-Bz-Part-Number", fmt.Sprintf("%d", uploadRequest.PartNumber))
+	req.Header.Set("Content-Type", "b2/x-auto")
+	req.Header.Set("X-Bz-Content-Sha1", uploadRequest.ChecksumSHA1)
+
+	part := new(FilePart)
+	_, err = s.client.Do(req, part)
+	if err != nil {
+		return nil, err
+	}
+
+	return part, nil
+}
+
+func (s *FileService) StartLargeFile(ctx context.Context, uploadRequest *StartLargeFileRequest) (*File, error) {
+	req, err := s.client.NewRequest(ctx, http.MethodPost, fileStartLargeFileURL, uploadRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	file := new(File)
+	_, err = s.client.Do(req, file)
+	if err != nil {
+		return nil, err
+	}
+
+	return file, nil
+}
+
+func (s *FileService) FinishLargeFile(ctx context.Context, uploadRequest *FinishLargeFileRequest) (*File, error) {
+	req, err := s.client.NewRequest(ctx, http.MethodPost, fileFinishLargeFileURL, uploadRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	file := new(File)
+	_, err = s.client.Do(req, file)
+	if err != nil {
+		return nil, err
+	}
+
+	return file, nil
+}
+
+func (s *FileService) CancelLargeFile(ctx context.Context, uploadRequest *CancelLargeFileRequest) (*File, error) {
+	req, err := s.client.NewRequest(ctx, http.MethodPost, fileCancelLargeFileURL, uploadRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	file := new(File)
+	_, err = s.client.Do(req, file)
+	if err != nil {
+		return nil, err
+	}
+
+	return file, nil
 }
