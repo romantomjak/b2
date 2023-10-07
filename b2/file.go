@@ -130,10 +130,10 @@ func (s *FileService) List(ctx context.Context, listRequest *FileListRequest) ([
 	root := new(fileListRoot)
 	resp, err := s.client.Do(req, root)
 	if err != nil {
-		return nil, resp, err
+		return nil, nil, err
 	}
 
-	return root.Files, resp, err
+	return root.Files, resp, nil
 }
 
 // Download a file
@@ -145,10 +145,10 @@ func (s *FileService) Download(ctx context.Context, url string, w io.Writer) (*h
 
 	resp, err := s.client.Do(req, w)
 	if err != nil {
-		return resp, err
+		return nil, err
 	}
 
-	return resp, err
+	return resp, nil
 }
 
 // UploadAuthorization returns the information for uploading a file.
@@ -161,7 +161,7 @@ func (s *FileService) UploadAuthorization(ctx context.Context, uploadAuthorizati
 	auth := new(UploadAuthorization)
 	resp, err := s.client.Do(req, auth)
 	if err != nil {
-		return nil, resp, err
+		return nil, nil, err
 	}
 
 	return auth, resp, nil
@@ -201,7 +201,7 @@ func (s *FileService) Upload(ctx context.Context, uploadRequest *UploadRequest) 
 	file := new(File)
 	resp, err := s.client.Do(req, file)
 	if err != nil {
-		return nil, resp, err
+		return nil, nil, err
 	}
 
 	return file, resp, nil

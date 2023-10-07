@@ -249,7 +249,7 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 
 	if v != nil {
 		if w, ok := v.(io.Writer); ok {
-			_, err = io.Copy(w, resp.Body)
+			_, err := io.Copy(w, resp.Body)
 			if err != nil {
 				return nil, err
 			}
@@ -261,7 +261,7 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 		}
 	}
 
-	return resp, err
+	return resp, nil
 }
 
 // checkResponse checks the API response for errors and returns them if present.

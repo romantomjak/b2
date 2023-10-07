@@ -9,21 +9,17 @@ import (
 )
 
 func (c *ListCommand) listFiles(path string) int {
-	pathParts := strings.SplitN(path, "/", 2)
-	bucketName := pathParts[0]
-	filePrefix := ""
+	bucketName, filePrefix := splitBucketAndPrefix(path)
 
-	if len(pathParts) > 1 {
-		filePrefix = pathParts[1]
-	}
-
-	bucket, err := c.findBucketByName(bucketName)
+	client, err := c.Client()
 	if err != nil {
 		c.ui.Error(fmt.Sprintf("Error: %v", err))
 		return 1
 	}
 
-	client, err := c.Client()
+	ctx := context.TODO()
+
+	bucket, err := findBucketByName(ctx, client, bucketName)
 	if err != nil {
 		c.ui.Error(fmt.Sprintf("Error: %v", err))
 		return 1
@@ -34,8 +30,6 @@ func (c *ListCommand) listFiles(path string) int {
 		Prefix:    filePrefix,
 		Delimiter: "/",
 	}
-
-	ctx := context.TODO()
 
 	files, _, err := client.File.List(ctx, req)
 	if err != nil {
@@ -50,19 +44,11 @@ func (c *ListCommand) listFiles(path string) int {
 	return 0
 }
 
-func (c *ListCommand) findBucketByName(name string) (*b2.Bucket, error) {
-	client, err := c.Client()
-	if err != nil {
-		c.ui.Error(fmt.Sprintf("Error: %v", err))
-		return nil, err
-	}
-
+func findBucketByName(ctx context.Context, client *b2.Client, name string) (*b2.Bucket, error) {
 	req := &b2.BucketListRequest{
 		AccountID: client.AccountID,
 		Name:      name,
 	}
-
-	ctx := context.TODO()
 
 	buckets, _, err := client.Bucket.List(ctx, req)
 	if err != nil {
@@ -74,4 +60,16 @@ func (c *ListCommand) findBucketByName(name string) (*b2.Bucket, error) {
 	}
 
 	return &buckets[0], nil
+}
+
+func splitBucketAndPrefix(path string) (string, string) {
+	pathParts := strings.SplitN(path, "/", 2)
+	bucketName := pathParts[0]
+	filePrefix := ""
+
+	if len(pathParts) > 1 {
+		filePrefix = pathParts[1]
+	}
+
+	return bucketName, filePrefix
 }
