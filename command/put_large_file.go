@@ -15,8 +15,17 @@ import (
 func (c *PutCommand) putLargeFile(info fs.FileInfo, src, dst string) int {
 	bucketName, filePrefix := destinationBucketAndFilename(src, dst)
 
+	// Create a client
+	client, err := c.Client()
+	if err != nil {
+		c.ui.Error(fmt.Sprintf("Error: %v", err))
+		return 1
+	}
+
+	ctx := context.TODO()
+
 	// TODO: caching bucket name:id mappings could save this request
-	bucket, err := c.findBucketByName(bucketName)
+	bucket, err := findBucketByName(ctx, client, bucketName)
 	if err != nil {
 		c.ui.Error(fmt.Sprintf("Error: %v", err))
 		return 1
@@ -28,8 +37,6 @@ func (c *PutCommand) putLargeFile(info fs.FileInfo, src, dst string) int {
 	// enqueue all other parts
 	// wait until all chunks are uploaded
 	// finish large file upload
-
-	ctx := context.TODO()
 
 	sha1, err := calculateFileSHA1(src)
 	if err != nil {

@@ -1,7 +1,6 @@
 package command
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -10,8 +9,6 @@ import (
 	"time"
 
 	"github.com/gosuri/uiprogress"
-
-	"github.com/romantomjak/b2/b2"
 )
 
 type PutCommand struct {
@@ -58,7 +55,7 @@ func (c *PutCommand) Run(args []string) int {
 	info, err := os.Stat(args[0])
 	if err != nil {
 		if os.IsNotExist(err) {
-			c.ui.Error(fmt.Sprintf("File does not exist: %s", args[0]))
+			c.ui.Error(fmt.Sprintf("Error: file does not exist: %s", args[0]))
 			return 1
 		}
 		c.ui.Error(fmt.Sprintf("Error: %v", err))
@@ -120,32 +117,6 @@ func (pr *progressReader) Start() {
 
 func (pr *progressReader) Stop() {
 	pr.progress.Stop()
-}
-
-func (c *PutCommand) findBucketByName(name string) (*b2.Bucket, error) {
-	client, err := c.Client()
-	if err != nil {
-		c.ui.Error(fmt.Sprintf("Error: %v", err))
-		return nil, err
-	}
-
-	req := &b2.BucketListRequest{
-		AccountID: client.AccountID,
-		Name:      name,
-	}
-
-	ctx := context.TODO()
-
-	buckets, _, err := client.Bucket.List(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(buckets) == 0 {
-		return nil, fmt.Errorf("bucket with name %q was not found", name)
-	}
-
-	return &buckets[0], nil
 }
 
 // fileExists checks if a file exists and is not a directory

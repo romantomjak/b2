@@ -14,13 +14,6 @@ import (
 func (c *PutCommand) putSmallFile(info fs.FileInfo, src, dst string) int {
 	bucketName, filePrefix := destinationBucketAndFilename(src, dst)
 
-	// TODO: caching bucket name:id mappings could save this request
-	bucket, err := c.findBucketByName(bucketName)
-	if err != nil {
-		c.ui.Error(fmt.Sprintf("Error: %v", err))
-		return 1
-	}
-
 	// Create a client
 	client, err := c.Client()
 	if err != nil {
@@ -29,6 +22,13 @@ func (c *PutCommand) putSmallFile(info fs.FileInfo, src, dst string) int {
 	}
 
 	ctx := context.TODO()
+
+	// TODO: caching bucket name:id mappings could save this request
+	bucket, err := findBucketByName(ctx, client, bucketName)
+	if err != nil {
+		c.ui.Error(fmt.Sprintf("Error: %v", err))
+		return 1
+	}
 
 	// Request upload url
 	uploadAuthReq := &b2.UploadAuthorizationRequest{

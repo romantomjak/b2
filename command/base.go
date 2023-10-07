@@ -72,7 +72,7 @@ func (c *baseCommand) Client() (*b2.Client, error) {
 	opts := []b2.ClientOpt{}
 
 	// disk cache is disabled, so we'll replace it with an
-	// in-memory based cache
+	// in-memory based cache.
 	if c.noCache {
 		cache, err := b2.NewInMemoryCache()
 		if err != nil {
