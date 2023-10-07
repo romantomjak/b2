@@ -163,11 +163,15 @@ func (c *GetCommand) copy(bucketName string, sources []b2.File, destination stri
 
 			bar := p.AddBar(int64(source.ContentLength),
 				mpb.PrependDecorators(
-					decor.Name(source.FileName),
+					decor.Name(source.FileName, decor.WC{W: len(source.FileName) + 1, C: decor.DidentRight}),
 				),
 				mpb.AppendDecorators(
-					decor.Counters(decor.SizeB1024(0), "% .2f / % .2f"),
+					decor.OnComplete(
+						decor.Counters(decor.SizeB1024(0), " % .2f / % .2f"), "downloaded",
+					),
 				),
+				mpb.BarFillerTrim(),
+				mpb.BarFillerClearOnComplete(),
 			)
 
 			filename := path.Join(destination, path.Base(source.FileName))
